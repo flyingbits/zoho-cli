@@ -1,94 +1,215 @@
 # zoho-cli
 
-CLI for Zoho's REST APIs. Covers CRM, Projects, WorkDrive, Writer, and Cliq.
+CLI for Zoho's REST APIs. Covers CRM, Projects, WorkDrive, Writer, and Cliq — 118 commands, single binary, JSON to stdout.
 
-There is no other tool that does this. Zoho's own CLIs (ZET, Catalyst) are for building extensions, not for talking to the API. Their Python SDK covers CRM only and requires MySQL for token storage. We checked.
+No other tool does this. Zoho's own CLIs (ZET, Catalyst) are for building extensions, not talking to the API. Their Python SDK covers CRM only and requires MySQL for token storage.
 
-## Install
+## Getting started
 
-**From source** (requires Go 1.22+):
+You'll need two things: the binary and a Zoho API app. Takes about five minutes.
+
+### Install
+
+From source (Go 1.22+):
 
 ```bash
 go install github.com/omin8tor/zoho-cli/cmd/zoho@latest
 ```
 
-**From release** (no Go required):
+Or grab a prebuilt binary from [releases](https://github.com/omin8tor/zoho-cli/releases) — unpack it, put it on your PATH.
 
-Download the binary for your platform from [releases](https://github.com/omin8tor/zoho-cli/releases), unpack, put it on your PATH.
+### Set up a Zoho API app
 
-## Auth
+Go to [api-console.zoho.com](https://api-console.zoho.com/) and create a "Self Client" app. You'll get a client ID and secret.
 
-You need a Zoho API Console app. Go to [api-console.zoho.com](https://api-console.zoho.com/), create a "Self Client" app, and get a client ID and secret.
+### Authenticate
 
-**Device flow** (interactive, for humans):
+**If you're a human at a terminal**, use device flow:
 
 ```bash
 zoho auth login --client-id YOUR_ID --client-secret YOUR_SECRET
 ```
 
-This opens a browser, you approve, done. Tokens are saved to `~/.config/zoho-cli/config.json`.
+This opens your browser, you approve the scopes, and you're done. Tokens are saved to `~/.config/zoho-cli/config.json` and auto-refresh.
 
-**Self-client code** (non-interactive, for CI/agents):
+**If you're a script or agent**, use env vars:
 
 ```bash
-zoho auth self-client --code GENERATED_CODE --client-id YOUR_ID --client-secret YOUR_SECRET
+export ZOHO_CLIENT_ID=1000.ABC123
+export ZOHO_CLIENT_SECRET=xyz789
+export ZOHO_REFRESH_TOKEN=1000.refresh_token_here
+export ZOHO_DC=com
 ```
 
-**Environment variables** (simplest for automation):
+(You can also use `zoho auth self-client` to exchange a code from the API Console.)
+
+Check that it works:
 
 ```bash
-export ZOHO_CLIENT_ID=...
-export ZOHO_CLIENT_SECRET=...
-export ZOHO_REFRESH_TOKEN=...
-export ZOHO_DC=com  # or eu, in, com.au, jp, ca, sa, uk
+zoho auth status
 ```
 
-The CLI checks env vars first, then config file.
+## Tutorial: your first queries
 
-## Usage
+Everything below assumes you've authenticated. Output is always JSON to stdout, errors to stderr. Pipe into `jq` for filtering.
+
+### CRM: look up contacts
+
+List contacts, pulling specific fields:
 
 ```bash
-# CRM
-zoho crm records list Contacts --fields "Full_Name,Email"
-zoho crm records get Contacts 12345 --fields "Full_Name,Email,Phone"
-zoho crm records search Deals --criteria "(Stage:equals:Closed Won)"
-zoho crm records create Leads --json '{"Last_Name":"Smith","Company":"Acme"}'
+zoho crm records list Contacts --fields "Full_Name,Email,Phone"
+```
 
-# Projects
-zoho projects core list --portal 12345
-zoho projects tasks list --portal 12345 --project 67890
+Get one contact by ID:
+
+```bash
+zoho crm records get Contacts 5551234000000012345 --fields "Full_Name,Email"
+```
+
+Search by criteria — find closed-won deals:
+
+```bash
+zoho crm records search Deals --criteria "(Stage:equals:Closed Won)" --fields "Deal_Name,Amount"
+```
+
+Create a lead:
+
+```bash
+zoho crm records create Leads --json '{"Last_Name":"Ochoa","Company":"Acme"}'
+```
+
+CRM v8 requires the `--fields` param on most read endpoints. If you forget it, the API returns empty records. That's Zoho, not us.
+
+### CRM: search across everything
+
+```bash
+zoho crm search-global --searchword "Ochoa" --fields "Full_Name,Email"
+```
+
+### CRM: COQL queries
+
+If criteria-based search isn't flexible enough, use COQL (Zoho's SQL-like query language):
+
+```bash
+zoho crm coql --query "SELECT Full_Name, Email FROM Contacts WHERE Email LIKE '%@acme.com' LIMIT 10"
+```
+
+This needs the `ZohoCRM.coql.READ` scope — it's separate from the general CRM scopes.
+
+### Projects: find your tasks
+
+You need a portal ID. List your portals first:
+
+```bash
+zoho projects core list
+```
+
+Grab the portal ID from the output, then:
+
+```bash
 zoho projects tasks my --portal 12345
-
-# WorkDrive
-zoho drive teams me
-zoho drive folders list --team TEAM_ID
-zoho drive files list --folder FOLDER_ID
-zoho drive download FILE_ID --output ./local-copy.pdf
-
-# Writer
-zoho writer details DOC_ID
-zoho writer merge DOC_ID --json '{"name":"Alice"}' --format pdf --output ./merged.pdf
-
-# Cliq
-zoho cliq channels list
-zoho cliq buddies message someone@company.com --text "hey"
 ```
 
-Output is JSON to stdout. Errors go to stderr. Pipe into `jq` for filtering:
+List all tasks in a project:
 
 ```bash
-zoho crm records list Contacts --fields "Full_Name,Email" | jq '.[].Email'
+zoho projects tasks list --portal 12345 --project 67890
+```
+
+Filter open tasks with jq:
+
+```bash
 zoho projects tasks my --portal 12345 | jq '[.[] | select(.status.name == "Open")]'
 ```
 
-Run `zoho --help-all` to see every command and its flags.
+### WorkDrive: navigate and download
 
-## What's here
+Find your team:
 
-118 commands across 6 groups:
+```bash
+zoho drive teams me
+```
 
-| Group | Commands | Covers |
-|-------|----------|--------|
+List top-level folders:
+
+```bash
+zoho drive folders list --team TEAM_ID
+```
+
+List files in a folder:
+
+```bash
+zoho drive files list --folder FOLDER_ID
+```
+
+Download a file:
+
+```bash
+zoho drive download FILE_ID --output ./report.pdf
+```
+
+Upload a file:
+
+```bash
+zoho drive upload ./quarterly.xlsx --folder FOLDER_ID
+```
+
+### Writer: work with documents
+
+Get document details:
+
+```bash
+zoho writer details DOC_ID
+```
+
+Merge data into a template and export as PDF:
+
+```bash
+zoho writer merge DOC_ID --json '{"name":"Alice","date":"2025-01-15"}' --format pdf --output ./letter.pdf
+```
+
+Get doc IDs from WorkDrive — Writer has no "list documents" endpoint.
+
+### Cliq: send messages
+
+List channels:
+
+```bash
+zoho cliq channels list
+```
+
+Send a DM:
+
+```bash
+zoho cliq buddies message someone@company.com --text "quarterly report is ready"
+```
+
+## Piping and composition
+
+The whole point is composability. Everything is JSON, so chain with `jq`, `xargs`, whatever:
+
+```bash
+# Get all emails from contacts
+zoho crm records list Contacts --fields "Email" | jq -r '.[].Email'
+
+# Download every file in a folder
+zoho drive files list --folder FOLDER_ID | jq -r '.[].id' | xargs -I{} zoho drive download {} --output ./downloads/
+
+# Find overdue tasks
+zoho projects tasks my --portal 12345 | jq '[.[] | select(.end_date < "2025-01-01")]'
+```
+
+## Data centers
+
+Zoho runs in 9 data centers. Set via `ZOHO_DC` env var or `--dc` flag on auth commands:
+
+`com` (US, default) · `eu` · `in` · `com.au` · `jp` · `ca` · `sa` · `uk` · `com.cn`
+
+## All 118 commands
+
+| Group | Count | Covers |
+|-------|-------|--------|
 | auth | 5 | login, self-client, status, refresh, logout |
 | crm | 29 | records CRUD, search, notes, related, tags, attachments, COQL, users |
 | projects | 39 | projects, tasks, issues, comments, tasklists, timelogs, milestones, dependencies |
@@ -96,30 +217,26 @@ Run `zoho --help-all` to see every command and its flags.
 | writer | 7 | create, details, merge, read, download |
 | cliq | 12 | channels, chats, buddies, messages, users |
 
-Single binary, no runtime dependencies. Builds for Linux, macOS, and Windows on amd64 and arm64.
+Run `zoho --help-all` for the full command reference with every flag.
 
-## Data centers
+## Agent Skill
 
-Zoho runs in 9 data centers. Set via `--dc` flag on auth commands or `ZOHO_DC` env var:
-
-`com` (US), `eu`, `in`, `com.au`, `jp`, `ca`, `sa`, `uk`, `com.cn`
-
-Default is `com`.
+This repo ships as an [Agent Skill](https://agentskills.io/) so LLM agents can discover and use it. The skill definition is in [`SKILL.md`](./SKILL.md) with detailed references in [`references/`](./references/).
 
 ## Development
 
 ```bash
-go build -o zoho ./cmd/zoho/    # build
-go test ./...                    # unit tests
-go vet ./...                     # lint
+go build -o zoho ./cmd/zoho/
+go test ./...
+go vet ./...
 ```
 
 Or with [mise](https://mise.jdx.dev/):
 
 ```bash
-mise run build
-mise run test
-mise run lint
+mise run build    # build binary
+mise run test     # unit tests
+mise run lint     # go vet
 ```
 
 ## License
