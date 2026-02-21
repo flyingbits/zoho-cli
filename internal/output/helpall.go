@@ -1,109 +1,94 @@
 package output
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"github.com/urfave/cli/v3"
 )
 
-type CommandSchema struct {
-	Command     string          `json:"command"`
-	Usage       string          `json:"usage"`
-	ArgsUsage   string          `json:"args_usage,omitempty"`
-	Flags       []FlagSchema    `json:"flags,omitempty"`
-	Subcommands []CommandSchema `json:"subcommands,omitempty"`
+func PrintHelpAll(app *cli.Command) error {
+	origPrinter := cli.HelpPrinter
+	cli.HelpPrinter = filterHelpPrinter
+	defer func() { cli.HelpPrinter = origPrinter }()
+
+	printHelp(app)
+	walkCommands(app)
+	return nil
 }
 
-type FlagSchema struct {
-	Name     string `json:"name"`
-	Usage    string `json:"usage"`
-	Required bool   `json:"required,omitempty"`
-	Default  string `json:"default,omitempty"`
-}
-
-func CollectSchemas(cmd *cli.Command, prefix string) []CommandSchema {
-	var schemas []CommandSchema
+func walkCommands(cmd *cli.Command) {
 	for _, sub := range cmd.Commands {
 		if sub.Name == "help" {
 			continue
 		}
-		fullName := sub.Name
-		if prefix != "" {
-			fullName = prefix + " " + sub.Name
-		}
-		userCmds := 0
-		for _, c := range sub.Commands {
-			if c.Name != "help" {
-				userCmds++
-			}
-		}
-		if userCmds > 0 {
-			schemas = append(schemas, CollectSchemas(sub, fullName)...)
-		} else {
-			schema := CommandSchema{
-				Command:   fullName,
-				Usage:     sub.Usage,
-				ArgsUsage: sub.ArgsUsage,
-			}
-			for _, f := range sub.Flags {
-				names := f.Names()
-				if len(names) == 0 {
-					continue
-				}
-				isHelp := false
-				for _, n := range names {
-					if n == "help" || n == "h" {
-						isHelp = true
-					}
-				}
-				if isHelp {
-					continue
-				}
-				name := names[0]
-				for _, n := range names {
-					if len(n) > len(name) {
-						name = n
-					}
-				}
-				fs := FlagSchema{Name: "--" + name}
-				switch ff := f.(type) {
-				case *cli.StringFlag:
-					fs.Usage = ff.Usage
-					fs.Required = ff.Required
-					if ff.Value != "" {
-						fs.Default = ff.Value
-					}
-				case *cli.IntFlag:
-					fs.Usage = ff.Usage
-					fs.Required = ff.Required
-					if ff.Value != 0 {
-						fs.Default = fmt.Sprintf("%d", ff.Value)
-					}
-				case *cli.BoolFlag:
-					fs.Usage = ff.Usage
-					fs.Required = ff.Required
-				}
-				schema.Flags = append(schema.Flags, fs)
-			}
-			schemas = append(schemas, schema)
-		}
+		fmt.Fprintln(os.Stdout)
+		fmt.Fprintln(os.Stdout, "────────────────────────────────────────")
+		printHelp(sub)
+		walkCommands(sub)
 	}
-	return schemas
 }
 
-func PrintHelpAll(app *cli.Command) error {
-	schemas := CollectSchemas(app, "")
-	grouped := map[string][]CommandSchema{}
-	for _, s := range schemas {
-		parts := strings.SplitN(s.Command, " ", 2)
-		group := parts[0]
-		grouped[group] = append(grouped[group], s)
+func printHelp(cmd *cli.Command) {
+	cmd.Run(context.Background(), []string{cmd.Name, "--help"})
+}
+
+func filterHelpPrinter(w io.Writer, templ string, data any) {
+	var buf strings.Builder
+	cli.DefaultPrintHelp(&buf, templ, data)
+	raw := buf.String()
+
+	lines := strings.Split(raw, "\n")
+	var out []string
+	skip := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		if trimmed == "GLOBAL OPTIONS:" {
+			skip = true
+			continue
+		}
+		if skip {
+			if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+				continue
+			}
+			skip = false
+		}
+
+		if strings.HasPrefix(trimmed, "--help,") && strings.HasSuffix(trimmed, "show help") {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "help,") && strings.Contains(trimmed, "Shows a list of commands") {
+			continue
+		}
+
+		out = append(out, line)
 	}
 
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	return enc.Encode(grouped)
+	var cleaned []string
+	for i, line := range out {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "OPTIONS:" || trimmed == "COMMANDS:" {
+			rest := ""
+			for j := i + 1; j < len(out); j++ {
+				rest = strings.TrimSpace(out[j])
+				if rest != "" {
+					break
+				}
+			}
+			if rest == "" || strings.HasSuffix(rest, ":") {
+				continue
+			}
+		}
+		cleaned = append(cleaned, line)
+	}
+
+	for len(cleaned) > 0 && strings.TrimSpace(cleaned[len(cleaned)-1]) == "" {
+		cleaned = cleaned[:len(cleaned)-1]
+	}
+
+	fmt.Fprintln(w, strings.Join(cleaned, "\n"))
 }

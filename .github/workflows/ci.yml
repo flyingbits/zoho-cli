@@ -25,5 +25,5 @@ jobs:
       - name: Build
         run: go build -o zoho ./cmd/zoho/
 
-      - name: Verify binary
+      - name: Smoke test
         run: ./zoho --version

@@ -1,26 +1,15 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-dist/
-build/
-.eggs/
-*.egg
-.venv/
-venv/
-.env
-*.so
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-*.log
-.DS_Store
-uv.lock
-.env.*
-.tickets/
-
-# Go
+# Build
 zoho
 dist/
+
+# Runtime
+.env
+.env.*
+
+# OS
+.DS_Store
+*.log
+
+# Dev tools
+.tickets/
+.beads/
