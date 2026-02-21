@@ -1,0 +1,112 @@
+package dc
+
+type DCConfig struct {
+	Accounts  string
+	Cliq      string
+	CRM       string
+	Projects  string
+	WorkDrive string
+	Writer    string
+	Download  string
+}
+
+var dcMap = map[string]DCConfig{
+	"com": {
+		Accounts:  "https://accounts.zoho.com",
+		Cliq:      "https://cliq.zoho.com",
+		CRM:       "https://zohoapis.com",
+		Projects:  "https://projectsapi.zoho.com",
+		WorkDrive: "https://workdrive.zoho.com",
+		Writer:    "https://www.zohoapis.com/writer",
+		Download:  "https://download.zoho.com",
+	},
+	"eu": {
+		Accounts:  "https://accounts.zoho.eu",
+		Cliq:      "https://cliq.zoho.eu",
+		CRM:       "https://zohoapis.eu",
+		Projects:  "https://projectsapi.zoho.eu",
+		WorkDrive: "https://workdrive.zoho.eu",
+		Writer:    "https://www.zohoapis.eu/writer",
+		Download:  "https://download.zoho.eu",
+	},
+	"in": {
+		Accounts:  "https://accounts.zoho.in",
+		Cliq:      "https://cliq.zoho.in",
+		CRM:       "https://zohoapis.in",
+		Projects:  "https://projectsapi.zoho.in",
+		WorkDrive: "https://workdrive.zoho.in",
+		Writer:    "https://www.zohoapis.in/writer",
+		Download:  "https://download.zoho.in",
+	},
+	"com.au": {
+		Accounts:  "https://accounts.zoho.com.au",
+		Cliq:      "https://cliq.zoho.com.au",
+		CRM:       "https://zohoapis.com.au",
+		Projects:  "https://projectsapi.zoho.com.au",
+		WorkDrive: "https://workdrive.zoho.com.au",
+		Writer:    "https://www.zohoapis.com.au/writer",
+		Download:  "https://download.zoho.com.au",
+	},
+	"jp": {
+		Accounts:  "https://accounts.zoho.jp",
+		Cliq:      "https://cliq.zoho.jp",
+		CRM:       "https://zohoapis.jp",
+		Projects:  "https://projectsapi.zoho.jp",
+		WorkDrive: "https://workdrive.zoho.jp",
+		Writer:    "https://www.zohoapis.jp/writer",
+		Download:  "https://download.zoho.jp",
+	},
+	"ca": {
+		Accounts:  "https://accounts.zohocloud.ca",
+		Cliq:      "https://cliq.zohocloud.ca",
+		CRM:       "https://zohoapis.ca",
+		Projects:  "https://projectsapi.zohocloud.ca",
+		WorkDrive: "https://workdrive.zohocloud.ca",
+		Writer:    "https://www.zohoapis.ca/writer",
+		Download:  "https://download.zohocloud.ca",
+	},
+	"sa": {
+		Accounts:  "https://accounts.zoho.sa",
+		Cliq:      "https://cliq.zoho.sa",
+		CRM:       "https://zohoapis.sa",
+		Projects:  "https://projectsapi.zoho.sa",
+		WorkDrive: "https://workdrive.zoho.sa",
+		Writer:    "https://www.zohoapis.sa/writer",
+		Download:  "https://download.zoho.sa",
+	},
+	"uk": {
+		Accounts:  "https://accounts.zoho.uk",
+		Cliq:      "https://cliq.zoho.uk",
+		CRM:       "https://zohoapis.uk",
+		Projects:  "https://projectsapi.zoho.uk",
+		WorkDrive: "https://workdrive.zoho.uk",
+		Writer:    "https://www.zohoapis.uk/writer",
+		Download:  "https://download.zoho.uk",
+	},
+	"com.cn": {
+		Accounts:  "https://accounts.zoho.com.cn",
+		Cliq:      "https://cliq.zoho.com.cn",
+		CRM:       "https://zohoapis.com.cn",
+		Projects:  "https://projectsapi.zoho.com.cn",
+		WorkDrive: "https://workdrive.zoho.com.cn",
+		Writer:    "https://www.zohoapis.com.cn/writer",
+		Download:  "https://download.zoho.com.cn",
+	},
+}
+
+var ValidDCs = []string{"com", "eu", "in", "com.au", "jp", "ca", "sa", "uk", "com.cn"}
+
+func GetDC(dc string) DCConfig {
+	if cfg, ok := dcMap[dc]; ok {
+		return cfg
+	}
+	return dcMap["com"]
+}
+
+func AccountsURL(dc string) string  { return GetDC(dc).Accounts }
+func CliqURL(dc string) string      { return GetDC(dc).Cliq }
+func CRMURL(dc string) string       { return GetDC(dc).CRM }
+func ProjectsURL(dc string) string  { return GetDC(dc).Projects }
+func WorkDriveURL(dc string) string { return GetDC(dc).WorkDrive }
+func WriterURL(dc string) string    { return GetDC(dc).Writer }
+func DownloadURL(dc string) string  { return GetDC(dc).Download }

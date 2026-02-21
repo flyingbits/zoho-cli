@@ -1,26 +1,26 @@
-[tools]
-python = "3.14"
-uv = "latest"
-
 [env]
 _.file = ".env"
 
+[tasks.build]
+description = "Build Go binary"
+run = "go build -o zoho ./cmd/zoho/"
+
 [tasks.test]
-description = "Run tests (excluding slow)"
-run = "uv run pytest -m 'not slow'"
+description = "Run Go tests"
+run = "go test ./..."
 
 [tasks."test:all"]
-description = "Run all tests including slow"
-run = "uv run pytest"
+description = "Run all Go tests including integration"
+run = "go test -tags integration ./..."
 
 [tasks.lint]
-description = "Run linter"
-run = "uv run ruff check src/"
+description = "Run Go linter"
+run = "go vet ./..."
 
 [tasks.fmt]
-description = "Format code"
-run = "uv run ruff format src/"
+description = "Format Go code"
+run = "gofmt -w ."
 
 [tasks.typecheck]
-description = "Run type checker"
-run = "uv run mypy src/"
+description = "Go type check (build)"
+run = "go build ./..."
