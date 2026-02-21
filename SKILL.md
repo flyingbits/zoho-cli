@@ -123,6 +123,14 @@ zoho cliq buddies message user@company.com --text "hello"
 zoho cliq messages list CHAT_ID
 ```
 
+## Coverage
+
+Supported now: **CRM** (29 commands), **Projects** (39), **WorkDrive** (26), **Writer** (7), **Cliq** (12).
+
+Not yet supported: Desk, Books, People, Recruit, Analytics, Sign, Campaigns, Mail, Calendar, Sheet, Show, Inventory, Invoice, Expense, Billing, Forms, SalesIQ, Bookings, Social, Survey, Meeting, Connect, Flow, Creator, Sprints, BugTracker, Bigin, Voice, Commerce, Backstage, Marketing Automation, FSM, Assist, Directory, Shifts, Contracts, Practice, Checkout, Lens, Learn, ZeptoMail, Notebook, TeamInbox, Office Integrator, ToDo, PDF Editor, IoT, DataPrep, Apptics, Vault, Catalyst, Webinar, PageSense, LandingPage, CommunitySpaces, Thrive, Sites, RouteIQ, Workerly, Solo, Procurement.
+
+If the user asks about an unsupported product, tell them zoho-cli doesn't cover it yet and suggest they open an issue at https://github.com/omin8tor/zoho-cli/issues.
+
 ## Data centers
 
 Set `ZOHO_DC` env var: `com` (US, default), `eu`, `in`, `com.au`, `jp`, `ca`, `sa`, `uk`, `com.cn`.

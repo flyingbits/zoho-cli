@@ -206,16 +206,78 @@ Zoho runs in 9 data centers. Set via `ZOHO_DC` env var or `--dc` flag on auth co
 
 `com` (US, default) · `eu` · `in` · `com.au` · `jp` · `ca` · `sa` · `uk` · `com.cn`
 
-## All 118 commands
+## Supported products
 
-| Group | Count | Covers |
-|-------|-------|--------|
-| auth | 5 | login, self-client, status, refresh, logout |
-| crm | 29 | records CRUD, search, notes, related, tags, attachments, COQL, users |
-| projects | 39 | projects, tasks, issues, comments, tasklists, timelogs, milestones, dependencies |
-| drive | 26 | files, folders, download, upload, sharing, teams |
-| writer | 7 | create, details, merge, read, download |
-| cliq | 12 | channels, chats, buddies, messages, users |
+| Product | Status | Commands |
+|---------|--------|----------|
+| **CRM** | Supported | 29 |
+| **Projects** | Supported | 39 |
+| **WorkDrive** | Supported | 26 |
+| **Writer** | Supported | 7 |
+| **Cliq** | Supported | 12 |
+| Desk | Planned | — |
+| Books | Planned | — |
+| People | Planned | — |
+| Recruit | Planned | — |
+| Analytics | Planned | — |
+| Sign | Planned | — |
+| Campaigns | Planned | — |
+| Mail | Planned | — |
+| Calendar | Planned | — |
+| Sheet | Planned | — |
+| Show | Planned | — |
+| Inventory | Planned | — |
+| Invoice | Planned | — |
+| Expense | Planned | — |
+| Billing | Planned | — |
+| Forms | Planned | — |
+| SalesIQ | Planned | — |
+| Bookings | Planned | — |
+| Social | Planned | — |
+| Survey | Planned | — |
+| Meeting | Planned | — |
+| Connect | Planned | — |
+| Flow | Planned | — |
+| Creator | Planned | — |
+| Sprints | Planned | — |
+| BugTracker | Planned | — |
+| Bigin | Planned | — |
+| Voice | Planned | — |
+| Commerce | Planned | — |
+| Backstage | Planned | — |
+| Marketing Automation | Planned | — |
+| FSM | Planned | — |
+| Assist | Planned | — |
+| Directory | Planned | — |
+| Shifts | Planned | — |
+| Contracts | Planned | — |
+| Practice | Planned | — |
+| Checkout | Planned | — |
+| Lens | Planned | — |
+| Learn | Planned | — |
+| ZeptoMail | Planned | — |
+| Notebook | Planned | — |
+| TeamInbox | Planned | — |
+| Office Integrator | Planned | — |
+| ToDo | Planned | — |
+| PDF Editor | Planned | — |
+| IoT | Planned | — |
+| DataPrep | Planned | — |
+| Apptics | Planned | — |
+| Vault | Planned | — |
+| Catalyst | Planned | — |
+| Webinar | Planned | — |
+| PageSense | Planned | — |
+| LandingPage | Planned | — |
+| CommunitySpaces | Planned | — |
+| Thrive | Planned | — |
+| Sites | Planned | — |
+| RouteIQ | Planned | — |
+| Workerly | Planned | — |
+| Solo | Planned | — |
+| Procurement | Planned | — |
+
+Want a product prioritized? [Open an issue](https://github.com/omin8tor/zoho-cli/issues).
 
 Run `zoho --help-all` for the full command reference with every flag.
 
