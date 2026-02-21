@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import os
 import tomllib
@@ -11,6 +12,7 @@ from pathlib import Path
 CONFIG_DIR = Path(os.environ.get("ZOHO_CLI_CONFIG_DIR", "~/.config/zoho-cli")).expanduser()
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 TOKENS_FILE = CONFIG_DIR / "tokens.json"
+CACHE_DIR = CONFIG_DIR / "cache"
 
 
 @dataclass
@@ -50,6 +52,37 @@ class TokenData:
     scopes: str = ""
 
 
+def _cache_key(refresh_token: str) -> str:
+    return hashlib.sha256(refresh_token.encode()).hexdigest()[:16]
+
+
+def load_cached_access_token(refresh_token: str) -> tuple[str, datetime] | None:
+    cache_file = CACHE_DIR / f"{_cache_key(refresh_token)}.json"
+    if not cache_file.exists():
+        return None
+    try:
+        data = json.loads(cache_file.read_text())
+        token = data.get("access_token", "")
+        expires_str = data.get("expires_at", "")
+        if not token or not expires_str:
+            return None
+        expires_at = datetime.fromisoformat(expires_str)
+        if datetime.now(UTC) + timedelta(minutes=5) >= expires_at:
+            return None
+        return token, expires_at
+    except json.JSONDecodeError, TypeError, ValueError:
+        return None
+
+
+def save_cached_access_token(refresh_token: str, access_token: str, expires_in: int) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = CACHE_DIR / f"{_cache_key(refresh_token)}.json"
+    expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
+    data = {"access_token": access_token, "expires_at": expires_at.isoformat()}
+    cache_file.write_text(json.dumps(data))
+    cache_file.chmod(0o600)
+
+
 def _from_env() -> AuthConfig | None:
     client_id = os.environ.get("ZOHO_CLIENT_ID", "")
     client_secret = os.environ.get("ZOHO_CLIENT_SECRET", "")
@@ -61,12 +94,20 @@ def _from_env() -> AuthConfig | None:
     dc = os.environ.get("ZOHO_DC", "com")
     accounts_url_env = os.environ.get("ZOHO_ACCOUNTS_URL", "")
 
+    cached = load_cached_access_token(refresh_token)
+    access_token = ""
+    expires_at = None
+    if cached:
+        access_token, expires_at = cached
+
     return AuthConfig(
         client_id=client_id,
         client_secret=client_secret,
         refresh_token=refresh_token,
         dc=dc,
         accounts_url=accounts_url_env,
+        access_token=access_token,
+        access_token_expires_at=expires_at,
         source="env",
     )
 
@@ -140,6 +181,7 @@ def save_tokens(
     }
     TOKENS_FILE.write_text(json.dumps(data, indent=2) + "\n")
     TOKENS_FILE.chmod(0o600)
+    save_cached_access_token(refresh_token, access_token, expires_in)
 
 
 def save_client_config(client_id: str, client_secret: str) -> None:

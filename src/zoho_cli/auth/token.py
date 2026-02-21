@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 
-from zoho_cli.auth.config import AuthConfig, save_tokens
+from zoho_cli.auth.config import AuthConfig, save_cached_access_token, save_tokens
 from zoho_cli.errors import AuthError
 
 
@@ -29,8 +29,11 @@ def refresh_access_token(config: AuthConfig) -> str:
         },
         timeout=30.0,
     )
-    resp.raise_for_status()
-    data = resp.json()
+    try:
+        data = resp.json()
+    except Exception:
+        resp.raise_for_status()
+        raise AuthError(f"Token refresh failed: unexpected response: {resp.text}") from None
 
     if "error" in data:
         raise AuthError(f"Token refresh failed: {data['error']}")
@@ -41,6 +44,8 @@ def refresh_access_token(config: AuthConfig) -> str:
 
     config.access_token = access_token
     config.api_domain = api_domain
+
+    save_cached_access_token(config.refresh_token, access_token, expires_in)
 
     if config.source == "config":
         save_tokens(

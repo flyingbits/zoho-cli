@@ -95,10 +95,9 @@ def paginate_crm(
     all_items: list[dict[str, Any]] = []
     p: dict[str, Any] = dict(params or {})
     p.setdefault("per_page", str(per_page))
-    page = 1
+    p["page"] = "1"
 
     for _ in range(max_pages):
-        p["page"] = str(page)
         data = client.request("GET", url, params={k: str(v) for k, v in p.items()})
         items = data.get("data", [])
         if not isinstance(items, list):
@@ -108,9 +107,14 @@ def paginate_crm(
         info = data.get("info", {})
         if not info.get("more_records", False):
             break
-        page += 1
-
         if not items:
             break
+
+        next_token = info.get("next_page_token")
+        if next_token:
+            p["page_token"] = str(next_token)
+            p.pop("page", None)
+        else:
+            p["page"] = str(int(p.get("page", "1")) + 1)
 
     return all_items

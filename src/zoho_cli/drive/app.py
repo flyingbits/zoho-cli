@@ -7,7 +7,6 @@ from typing import Annotated, Any
 
 import cappa
 
-from zoho_cli.errors import ZohoAPIError
 from zoho_cli.http.client import ZohoClient, get_client
 from zoho_cli.output import output
 from zoho_cli.pagination import paginate_workdrive
@@ -26,61 +25,6 @@ _ROLE_IDS = {
     "editor": 5,
     "organizer": 4,
 }
-
-
-def _resource_id(item: dict[str, Any]) -> str | None:
-    attrs = item.get("attributes", {})
-    return attrs.get("resource_id") or item.get("id") or None
-
-
-def _slim_file(item: dict[str, Any]) -> dict[str, Any]:
-    attrs = item.get("attributes", {})
-    storage = attrs.get("storage_info")
-    return {
-        "id": _resource_id(item),
-        "name": attrs.get("name"),
-        "type": attrs.get("type"),
-        "extension": attrs.get("extension"),
-        "size": storage.get("size") if isinstance(storage, dict) else None,
-        "modified_time": attrs.get("modified_time"),
-        "parent_id": attrs.get("parent_id"),
-        "permalink": attrs.get("permalink"),
-    }
-
-
-def _slim_folder(item: dict[str, Any]) -> dict[str, Any]:
-    attrs = item.get("attributes", {})
-    return {
-        "id": _resource_id(item),
-        "name": attrs.get("name"),
-        "type": "folder",
-    }
-
-
-def _slim_permission(item: dict[str, Any]) -> dict[str, Any]:
-    attrs = item.get("attributes", {})
-    return {
-        "permission_id": item.get("id"),
-        "email": attrs.get("email_id"),
-        "display_name": attrs.get("display_name"),
-        "role": attrs.get("role_name"),
-        "role_id": attrs.get("role_id"),
-        "shared_by": attrs.get("shared_by"),
-        "shared_time": attrs.get("shared_time"),
-        "expiration_date": attrs.get("expiration_date"),
-    }
-
-
-def _slim_link(item: dict[str, Any]) -> dict[str, Any]:
-    attrs = item.get("attributes", {})
-    return {
-        "link_id": item.get("id"),
-        "link": attrs.get("link"),
-        "link_name": attrs.get("link_name"),
-        "role_id": attrs.get("role_id"),
-        "allow_download": attrs.get("allow_download"),
-        "expiration_date": attrs.get("expiration_date"),
-    }
 
 
 def _jsonapi_body(attrs: dict[str, Any], *, resource_id: str | None = None) -> dict[str, Any]:
@@ -112,7 +56,7 @@ class FilesList:
         if self.file_type:
             params["filter[type]"] = self.file_type
         items = paginate_workdrive(client, url, params=params)
-        output([_slim_file(item) for item in items])
+        output(items)
 
 
 @cappa.command(name="get", help="Get file info")
@@ -123,48 +67,7 @@ class FilesGet:
     def __call__(self, client: Annotated[ZohoClient, cappa.Dep(get_client)]) -> None:
         url = f"{client.workdrive_base}/files/{self.file_id}"
         data = client.request("GET", url)
-        item = data.get("data", {})
-        attrs = item.get("attributes", {})
-        storage = attrs.get("storage_info")
-
-        bc_url = f"{client.workdrive_base}/files/{self.file_id}/breadcrumbs"
-        path = None
-        try:
-            bc_data = client.request("GET", bc_url)
-            bc_items = bc_data.get("data", [])
-            if bc_items:
-                parent_ids = bc_items[0].get("attributes", {}).get("parent_ids", [])
-                path_parts = [p.get("name", "") for p in parent_ids]
-                path = "/" + "/".join(path_parts) if path_parts else None
-        except ZohoAPIError:
-            pass
-
-        info: dict[str, Any] = {
-            "id": _resource_id(item),
-            "name": attrs.get("name"),
-            "type": attrs.get("type"),
-            "extension": attrs.get("extension"),
-            "size": storage.get("size") if isinstance(storage, dict) else None,
-            "created_time": attrs.get("created_time"),
-            "modified_time": attrs.get("modified_time"),
-            "parent_id": attrs.get("parent_id"),
-            "permalink": attrs.get("permalink"),
-            "path": path,
-        }
-
-        file_type = attrs.get("type", "")
-        if file_type in ("document", "spreadsheet", "presentation", "zdoc"):
-            try:
-                doc_url = f"{client.writer_base}/documents/{self.file_id}"
-                doc_data = client.request("GET", doc_url)
-                info["version"] = doc_data.get("version")
-                info["open_url"] = doc_data.get("open_url")
-                info["preview_url"] = doc_data.get("preview_url")
-                info["download_url"] = doc_data.get("download_url")
-            except ZohoAPIError:
-                pass
-
-        output(info)
+        output(data)
 
 
 @cappa.command(name="search", help="Search files")
@@ -185,7 +88,7 @@ class FilesSearch:
         if self.file_type:
             params["filter[type]"] = self.file_type
         items = paginate_workdrive(client, url, params=params)
-        output([_slim_file(item) for item in items])
+        output(items)
 
 
 @cappa.command(name="rename", help="Rename a file")
@@ -202,9 +105,7 @@ class FilesRename:
             json=body,
             headers={"Content-Type": _JSONAPI_CT},
         )
-        item = data.get("data", {})
-        attrs = item.get("attributes", {})
-        output({"ok": True, "id": _resource_id(item), "name": attrs.get("name")})
+        output(data)
 
 
 @cappa.command(name="copy", help="Copy a file")
@@ -221,9 +122,7 @@ class FilesCopy:
             json=body,
             headers={"Content-Type": _JSONAPI_CT},
         )
-        item = data.get("data", {})
-        attrs = item.get("attributes", {})
-        output({"ok": True, "id": _resource_id(item), "name": attrs.get("name")})
+        output(data)
 
 
 @cappa.command(name="trash", help="Move a file to trash")
@@ -233,13 +132,13 @@ class FilesTrash:
 
     def __call__(self, client: Annotated[ZohoClient, cappa.Dep(get_client)]) -> None:
         body = _jsonapi_body({"status": 51})
-        client.request(
+        data = client.request(
             "PATCH",
             f"{client.workdrive_base}/files/{self.file_id}",
             json=body,
             headers={"Content-Type": _JSONAPI_CT},
         )
-        output({"ok": True, "action": "trash", "id": self.file_id})
+        output(data)
 
 
 @cappa.command(name="delete", help="Permanently delete a file")
@@ -249,13 +148,13 @@ class FilesDelete:
 
     def __call__(self, client: Annotated[ZohoClient, cappa.Dep(get_client)]) -> None:
         body = _jsonapi_body({"status": 61})
-        client.request(
+        data = client.request(
             "PATCH",
             f"{client.workdrive_base}/files/{self.file_id}",
             json=body,
             headers={"Content-Type": _JSONAPI_CT},
         )
-        output({"ok": True, "action": "delete", "id": self.file_id})
+        output(data)
 
 
 @cappa.command(name="files", help="WorkDrive file operations")
@@ -274,7 +173,7 @@ class FoldersList:
     def __call__(self, client: Annotated[ZohoClient, cappa.Dep(get_client)]) -> None:
         url = f"{client.workdrive_base}/teams/{self.team}/teamfolders"
         folders = paginate_workdrive(client, url)
-        output([_slim_folder(f) for f in folders])
+        output(folders)
 
 
 @cappa.command(name="create", help="Create a folder or document")
@@ -301,16 +200,7 @@ class FoldersCreate:
                 }
             )
         data = client.request("POST", url, json=body, headers={"Content-Type": _JSONAPI_CT})
-        item = data.get("data", {})
-        attrs = item.get("attributes", {})
-        output(
-            {
-                "id": _resource_id(item),
-                "name": attrs.get("name"),
-                "type": attrs.get("type"),
-                "permalink": attrs.get("permalink"),
-            }
-        )
+        output(data)
 
 
 @cappa.command(name="breadcrumb", help="Show folder path")
@@ -321,13 +211,7 @@ class FoldersBreadcrumb:
     def __call__(self, client: Annotated[ZohoClient, cappa.Dep(get_client)]) -> None:
         url = f"{client.workdrive_base}/files/{self.folder_id}/breadcrumbs"
         data = client.request("GET", url)
-        bc_items = data.get("data", [])
-        if bc_items:
-            parent_ids = bc_items[0].get("attributes", {}).get("parent_ids", [])
-            path_parts = [p.get("name", "") for p in parent_ids]
-            output({"path": "/" + "/".join(path_parts), "parts": path_parts})
-        else:
-            output({"path": "/", "parts": []})
+        output(data)
 
 
 @cappa.command(name="folders", help="WorkDrive folder operations")
@@ -352,7 +236,7 @@ class Download:
             url = f"{client.writer_base}/download/{self.file_id}"
             resp = client.request_raw("GET", url, params={"format": self.format})
         else:
-            url = f"{client.download_base}/v1/workdrive/download/{self.file_id}"
+            url = f"{client.workdrive_base}/download/{self.file_id}"
             resp = client.request_raw("GET", url)
 
         if self.output_path:
@@ -380,20 +264,7 @@ class Upload:
         if self.override:
             form_data["override-name-exist"] = "true"
         data = client.request("POST", url, data=form_data, files=files)
-        items = data.get("data", [])
-        if isinstance(items, list) and items:
-            item = items[0]
-            attrs = item.get("attributes", {})
-            output(
-                {
-                    "id": attrs.get("resource_id") or item.get("id"),
-                    "name": attrs.get("FileName"),
-                    "permalink": attrs.get("Permalink"),
-                    "parent_id": attrs.get("parent_id"),
-                }
-            )
-        else:
-            output({"ok": True, "raw": data})
+        output(data)
 
 
 @cappa.command(name="permissions", help="List file permissions")
@@ -404,8 +275,7 @@ class SharePermissions:
     def __call__(self, client: Annotated[ZohoClient, cappa.Dep(get_client)]) -> None:
         url = f"{client.workdrive_base}/files/{self.file_id}/permissions"
         data = client.request("GET", url)
-        items = data.get("data", [])
-        output([_slim_permission(item) for item in items])
+        output(data)
 
 
 @cappa.command(name="add", help="Share a file")
@@ -429,10 +299,7 @@ class ShareAdd:
         data = client.request(
             "POST", url, json=_perm_body(attrs), headers={"Content-Type": _JSONAPI_CT}
         )
-        item = data.get("data", {})
-        output(
-            {"ok": True, "permission_id": item.get("id"), "email": self.email, "role": self.role}
-        )
+        output(data)
 
 
 @cappa.command(name="revoke", help="Revoke file access")
@@ -481,16 +348,7 @@ class ShareLink:
         data = client.request(
             "POST", url, json=_link_body(attrs), headers={"Content-Type": _JSONAPI_CT}
         )
-        item = data.get("data", {})
-        attrs_resp = item.get("attributes", {})
-        output(
-            {
-                "ok": True,
-                "link_id": item.get("id"),
-                "link": attrs_resp.get("link"),
-                "role": self.role,
-            }
-        )
+        output(data)
 
 
 @cappa.command(name="share", help="File sharing operations")

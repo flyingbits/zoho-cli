@@ -18,3 +18,5 @@ htmlcov/
 *.log
 .DS_Store
 uv.lock
+.env.*
+.tickets/

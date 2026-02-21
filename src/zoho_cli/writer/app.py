@@ -7,6 +7,7 @@ from typing import Annotated, Any
 
 import cappa
 
+from zoho_cli.errors import ZohoAPIError
 from zoho_cli.http.client import ZohoClient, get_client
 from zoho_cli.output import output
 
@@ -42,17 +43,7 @@ class WriterCreate:
             }
         }
         data = client.request("POST", url, json=body, headers={"Content-Type": _JSONAPI_CT})
-        item = data.get("data", {})
-        attrs = item.get("attributes", {})
-        resource_id = attrs.get("resource_id") or item.get("id")
-        output(
-            {
-                "id": resource_id,
-                "name": attrs.get("name"),
-                "type": attrs.get("type"),
-                "permalink": attrs.get("permalink"),
-            }
-        )
+        output(data)
 
 
 @cappa.command(name="read", help="Read document content as text")
@@ -63,7 +54,13 @@ class WriterRead:
 
     def __call__(self, client: Annotated[ZohoClient, cappa.Dep(get_client)]) -> None:
         url = f"{client.writer_base}/download/{self.doc_id}"
-        resp = client.request_raw("GET", url, params={"format": self.format})
+        try:
+            resp = client.request_raw("GET", url, params={"format": self.format})
+        except ZohoAPIError as e:
+            if "R3002" in str(e):
+                output({"error": "Document is empty — Zoho cannot export empty documents (R3002)"})
+                return
+            raise
         content = resp.text
         if not content:
             output({"error": "Document is empty or could not be read"})
@@ -84,7 +81,13 @@ class WriterDownload:
 
     def __call__(self, client: Annotated[ZohoClient, cappa.Dep(get_client)]) -> None:
         url = f"{client.writer_base}/download/{self.doc_id}"
-        resp = client.request_raw("GET", url, params={"format": self.format})
+        try:
+            resp = client.request_raw("GET", url, params={"format": self.format})
+        except ZohoAPIError as e:
+            if "R3002" in str(e):
+                output({"error": "Document is empty — Zoho cannot export empty documents (R3002)"})
+                return
+            raise
         if self.output_path:
             Path(self.output_path).write_bytes(resp.content)
             output({"ok": True, "path": self.output_path, "size": len(resp.content)})
