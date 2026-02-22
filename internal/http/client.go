@@ -22,6 +22,7 @@ type Client struct {
 	accessToken   string
 	CRMBase       string
 	ProjectsBase  string
+	SheetBase     string
 	WorkDriveBase string
 	WriterBase    string
 	CliqBase      string
@@ -42,6 +43,7 @@ func NewClient(config *auth.AuthConfig) (*Client, error) {
 		accessToken:   token,
 		CRMBase:       dc.CRMURL(d) + "/crm/v8",
 		ProjectsBase:  dc.ProjectsURL(d) + "/api/v3",
+		SheetBase:     dc.SheetURL(d) + "/api/v2",
 		WorkDriveBase: dc.WorkDriveURL(d) + "/api/v1",
 		WriterBase:    dc.WriterURL(d) + "/api/v1",
 		CliqBase:      dc.CliqURL(d),

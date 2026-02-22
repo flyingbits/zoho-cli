@@ -1,0 +1,2378 @@
+package sheet
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/omin8tor/zoho-cli/internal/auth"
+	zohttp "github.com/omin8tor/zoho-cli/internal/http"
+	"github.com/omin8tor/zoho-cli/internal/output"
+	"github.com/urfave/cli/v3"
+)
+
+func getClient() (*zohttp.Client, error) {
+	config, err := auth.ResolveAuth()
+	if err != nil {
+		return nil, err
+	}
+	return zohttp.NewClient(config)
+}
+
+var workbookFlag = &cli.StringFlag{Name: "workbook", Required: true, Usage: "Workbook resource ID"}
+
+var worksheetFlag = &cli.StringFlag{Name: "worksheet", Usage: "Worksheet name"}
+
+func Commands() *cli.Command {
+	return &cli.Command{
+		Name:  "sheet",
+		Usage: "Zoho Sheet operations",
+		Commands: []*cli.Command{
+			workbooksCmd(),
+			worksheetsCmd(),
+			tablesCmd(),
+			recordsCmd(),
+			cellsCmd(),
+			contentCmd(),
+			formatCmd(),
+			namedRangesCmd(),
+			mergeCmd(),
+			premiumCmd(),
+			utilityCmd(),
+		},
+	}
+}
+
+func workbooksCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "workbooks",
+		Usage: "Workbook operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "list",
+				Usage: "List all workbooks",
+				Flags: []cli.Flag{
+					&cli.IntFlag{Name: "start-index", Usage: "Start index"},
+					&cli.IntFlag{Name: "count", Usage: "Number of workbooks"},
+					&cli.StringFlag{Name: "sort-option", Usage: "Sort option"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.list"}
+					if v := cmd.Int("start-index"); v > 0 {
+						params["start_index"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.Int("count"); v > 0 {
+						params["count"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.String("sort-option"); v != "" {
+						params["sort_option"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/workbooks", &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "templates",
+				Usage: "List all templates",
+				Flags: []cli.Flag{
+					&cli.IntFlag{Name: "start-index", Usage: "Start index"},
+					&cli.IntFlag{Name: "count", Usage: "Number of templates"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.templates.list"}
+					if v := cmd.Int("start-index"); v > 0 {
+						params["start_index"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.Int("count"); v > 0 {
+						params["count"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/workbooks", &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "versions",
+				Usage: "List all versions",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.version.list"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "create",
+				Usage: "Create workbook",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "workbook-name", Required: true, Usage: "Workbook name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":        "workbook.create",
+						"workbook_name": cmd.String("workbook-name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/workbooks", &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "create-from-template",
+				Usage: "Create workbook from template",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "workbook-name", Required: true, Usage: "New workbook name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":        "workbook.create.from.template",
+						"workbook_name": cmd.String("workbook-name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "upload",
+				Usage: "Upload workbook",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "file", Required: true, Usage: "Path to file"},
+					&cli.StringFlag{Name: "workbook-name", Usage: "Workbook name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					filePath := cmd.String("file")
+					data, err := os.ReadFile(filePath)
+					if err != nil {
+						return fmt.Errorf("failed to read file: %w", err)
+					}
+					name := filepath.Base(filePath)
+					params := map[string]string{"method": "workbook.upload"}
+					form := map[string]string{}
+					if v := cmd.String("workbook-name"); v != "" {
+						form["workbook_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/workbooks", &zohttp.RequestOpts{
+						Params: params,
+						Files:  map[string]zohttp.FileUpload{"file": {Filename: name, Data: data}},
+						Form:   form,
+					})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "download",
+				Usage: "Download workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "format", Required: true, Usage: "Download format (xlsx/csv/tsv/ods/pdf/html)"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":          "workbook.download",
+						"download_format": cmd.String("format"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "insert-images",
+				Usage: "Insert images into workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "image-json", Required: true, Usage: "Image JSON configuration"},
+					&cli.StringFlag{Name: "file", Usage: "Path to image file"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "workbook.images.insert",
+						"image_json": cmd.String("image-json"),
+					}
+					opts := &zohttp.RequestOpts{Params: params}
+					if filePath := cmd.String("file"); filePath != "" {
+						data, err := os.ReadFile(filePath)
+						if err != nil {
+							return fmt.Errorf("failed to read file: %w", err)
+						}
+						name := filepath.Base(filePath)
+						opts.Files = map[string]zohttp.FileUpload{"imagefiles": {Filename: name, Data: data}}
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), opts)
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "copy",
+				Usage: "Copy workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "new-workbook-name", Required: true, Usage: "New workbook name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":            "workbook.copy",
+						"new_workbook_name": cmd.String("new-workbook-name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "share",
+				Usage: "Share workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "email", Required: true, Usage: "Email address to share with"},
+					&cli.StringFlag{Name: "role", Usage: "Role for shared user"},
+					&cli.StringFlag{Name: "notify", Usage: "Notify user (true/false)"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":   "workbook.share",
+						"email_id": cmd.String("email"),
+					}
+					if v := cmd.String("role"); v != "" {
+						params["role"] = v
+					}
+					if v := cmd.String("notify"); v != "" {
+						params["notify"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "create-version",
+				Usage: "Create a version",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "version-name", Required: true, Usage: "Version name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":       "workbook.version.create",
+						"version_name": cmd.String("version-name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "revert-version",
+				Usage: "Revert to a version",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "version-id", Required: true, Usage: "Version ID"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "workbook.version.revert",
+						"version_id": cmd.String("version-id"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "trash",
+				Usage: "Trash workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.trash"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "restore",
+				Usage: "Restore workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.restore"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.delete"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "publish",
+				Usage: "Publish workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.publish"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "unpublish",
+				Usage: "Remove publish from workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.publish.remove"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "lock",
+				Usage: "Lock workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.lock"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "unlock",
+				Usage: "Unlock workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.unlock"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func worksheetsCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "worksheets",
+		Usage: "Worksheet operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "list",
+				Usage: "List all worksheets",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "worksheet.list"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "create",
+				Usage: "Create worksheet",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "worksheet-name", Required: true, Usage: "Worksheet name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":         "worksheet.create",
+						"worksheet_name": cmd.String("worksheet-name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "copy",
+				Usage: "Copy worksheet within same workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "new-worksheet-name", Required: true, Usage: "New worksheet name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":             "worksheet.copy",
+						"worksheet_name":     cmd.String("worksheet"),
+						"new_worksheet_name": cmd.String("new-worksheet-name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "copy-to",
+				Usage: "Copy worksheet to another workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "dest-workbook", Required: true, Usage: "Destination workbook resource ID"},
+					&cli.StringFlag{Name: "new-worksheet-name", Usage: "New worksheet name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":           "worksheet.copy.to",
+						"worksheet_name":   cmd.String("worksheet"),
+						"dest_resource_id": cmd.String("dest-workbook"),
+					}
+					if v := cmd.String("new-worksheet-name"); v != "" {
+						params["new_worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "rename",
+				Usage: "Rename worksheet",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "new-worksheet-name", Required: true, Usage: "New worksheet name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":             "worksheet.rename",
+						"worksheet_name":     cmd.String("worksheet"),
+						"new_worksheet_name": cmd.String("new-worksheet-name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete worksheet",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":         "worksheet.delete",
+						"worksheet_name": cmd.String("worksheet"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete-multiple",
+				Usage: "Delete multiple worksheets",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "worksheet-names", Required: true, Usage: "JSON array of worksheet names"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":          "worksheet.delete.multiple",
+						"worksheet_names": cmd.String("worksheet-names"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func tablesCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "tables",
+		Usage: "Table operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "list",
+				Usage: "List all tables",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "table.list"}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "create",
+				Usage: "Create table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+					&cli.IntFlag{Name: "start-row", Required: true, Usage: "Start row"},
+					&cli.IntFlag{Name: "start-column", Required: true, Usage: "Start column"},
+					&cli.IntFlag{Name: "end-row", Required: true, Usage: "End row"},
+					&cli.IntFlag{Name: "end-column", Required: true, Usage: "End column"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":       "table.create",
+						"table_name":   cmd.String("table-name"),
+						"start_row":    fmt.Sprintf("%d", cmd.Int("start-row")),
+						"start_column": fmt.Sprintf("%d", cmd.Int("start-column")),
+						"end_row":      fmt.Sprintf("%d", cmd.Int("end-row")),
+						"end_column":   fmt.Sprintf("%d", cmd.Int("end-column")),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "remove",
+				Usage: "Remove table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "table.remove",
+						"table_name": cmd.String("table-name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "rename-headers",
+				Usage: "Rename headers of table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+					&cli.StringFlag{Name: "header-row", Required: true, Usage: "Header row JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "table.rename.headers",
+						"table_name": cmd.String("table-name"),
+						"header_row": cmd.String("header-row"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "fetch-records",
+				Usage: "Fetch records from table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+					&cli.StringFlag{Name: "criteria", Usage: "Filter criteria"},
+					&cli.IntFlag{Name: "start-index", Usage: "Start index"},
+					&cli.IntFlag{Name: "count", Usage: "Number of records"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "table.records.fetch",
+						"table_name": cmd.String("table-name"),
+					}
+					if v := cmd.String("criteria"); v != "" {
+						params["criteria"] = v
+					}
+					if v := cmd.Int("start-index"); v > 0 {
+						params["start_index"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.Int("count"); v > 0 {
+						params["count"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "add-records",
+				Usage: "Add records to table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "table.records.add",
+						"table_name": cmd.String("table-name"),
+						"json_data":  cmd.String("json"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "update-records",
+				Usage: "Update records in table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+					&cli.StringFlag{Name: "criteria", Required: true, Usage: "Filter criteria"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "table.records.update",
+						"table_name": cmd.String("table-name"),
+						"criteria":   cmd.String("criteria"),
+						"json_data":  cmd.String("json"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete-records",
+				Usage: "Delete records from table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+					&cli.StringFlag{Name: "criteria", Required: true, Usage: "Filter criteria"},
+					&cli.StringFlag{Name: "delete-rows", Usage: "Delete entire rows (true/false)"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "table.records.delete",
+						"table_name": cmd.String("table-name"),
+						"criteria":   cmd.String("criteria"),
+					}
+					if v := cmd.String("delete-rows"); v != "" {
+						params["delete_rows"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "insert-columns",
+				Usage: "Insert columns to table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+					&cli.StringFlag{Name: "columns", Required: true, Usage: "Columns JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "table.columns.insert",
+						"table_name": cmd.String("table-name"),
+						"columns":    cmd.String("columns"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete-columns",
+				Usage: "Delete columns from table",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "table-name", Required: true, Usage: "Table name"},
+					&cli.StringFlag{Name: "columns", Required: true, Usage: "Columns JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "table.columns.delete",
+						"table_name": cmd.String("table-name"),
+						"columns":    cmd.String("columns"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func recordsCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "records",
+		Usage: "Worksheet record operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "fetch",
+				Usage: "Fetch records from worksheet",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "criteria", Usage: "Filter criteria"},
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.IntFlag{Name: "start-row", Usage: "Start row number"},
+					&cli.IntFlag{Name: "count", Usage: "Number of records"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "worksheet.records.fetch"}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.String("criteria"); v != "" {
+						params["criteria"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.Int("start-row"); v > 0 {
+						params["start_row"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.Int("count"); v > 0 {
+						params["count"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "add",
+				Usage: "Add records to worksheet",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "worksheet.records.add",
+						"json_data": cmd.String("json"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "update",
+				Usage: "Update records in worksheet",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "criteria", Required: true, Usage: "Filter criteria"},
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "worksheet.records.update",
+						"criteria":  cmd.String("criteria"),
+						"json_data": cmd.String("json"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete records from worksheet",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "criteria", Required: true, Usage: "Filter criteria"},
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.StringFlag{Name: "delete-rows", Usage: "Delete entire rows (true/false)"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":   "worksheet.records.delete",
+						"criteria": cmd.String("criteria"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.String("delete-rows"); v != "" {
+						params["delete_rows"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "insert-columns",
+				Usage: "Insert columns to worksheet records",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "columns", Required: true, Usage: "Columns JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":  "worksheet.columns.insert",
+						"columns": cmd.String("columns"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func cellsCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "cells",
+		Usage: "Cell and range content operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "get",
+				Usage: "Get content of cell",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "cell", Required: true, Usage: "Cell reference (e.g. A1)"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "cell.get",
+						"cell":   cmd.String("cell"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "get-range",
+				Usage: "Get content of range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "range", Required: true, Usage: "Range reference (e.g. A1:B5)"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "range.get",
+						"range":  cmd.String("range"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "get-named-range",
+				Usage: "Get content of named range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "named-range", Required: true, Usage: "Named range"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":      "namedrange.get",
+						"named_range": cmd.String("named-range"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "get-worksheet",
+				Usage: "Get content of worksheet area",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "start-row", Usage: "Start row"},
+					&cli.IntFlag{Name: "start-column", Usage: "Start column"},
+					&cli.IntFlag{Name: "end-row", Usage: "End row"},
+					&cli.IntFlag{Name: "end-column", Usage: "End column"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "worksheet.content.get"}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("start-row"); v > 0 {
+						params["start_row"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.Int("start-column"); v > 0 {
+						params["start_column"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.Int("end-row"); v > 0 {
+						params["end_row"] = fmt.Sprintf("%d", v)
+					}
+					if v := cmd.Int("end-column"); v > 0 {
+						params["end_column"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "get-used-area",
+				Usage: "Get used area of worksheet",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "worksheet.usedarea.get"}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "set",
+				Usage: "Set content to cell",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "cell", Required: true, Usage: "Cell reference (e.g. A1)"},
+					&cli.StringFlag{Name: "value", Required: true, Usage: "Cell value"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "cell.set",
+						"cell":   cmd.String("cell"),
+						"value":  cmd.String("value"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "set-multiple",
+				Usage: "Set content to multiple cells",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "cell-data", Required: true, Usage: "Cell data JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "cells.set",
+						"cell_data": cmd.String("cell-data"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "set-row",
+				Usage: "Set content to row",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "row", Required: true, Usage: "Row number"},
+					&cli.StringFlag{Name: "column-array", Required: true, Usage: "Column array JSON"},
+					&cli.StringFlag{Name: "data-array", Required: true, Usage: "Data array JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":       "row.set",
+						"row":          fmt.Sprintf("%d", cmd.Int("row")),
+						"column_array": cmd.String("column-array"),
+						"data_array":   cmd.String("data-array"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "set-range",
+				Usage: "Set content to range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "range", Required: true, Usage: "Range reference (e.g. A1:B5)"},
+					&cli.StringFlag{Name: "data", Required: true, Usage: "Data JSON 2D array"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "range.set",
+						"range":  cmd.String("range"),
+						"data":   cmd.String("data"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func contentCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "content",
+		Usage: "Content operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "append-csv",
+				Usage: "Append rows with CSV data",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "data", Required: true, Usage: "CSV data string"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "content.append.csv",
+						"data":   cmd.String("data"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "append-json",
+				Usage: "Append rows with JSON data",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "content.append.json",
+						"json_data": cmd.String("json"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "update-json",
+				Usage: "Update rows with JSON data",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.StringFlag{Name: "criteria", Required: true, Usage: "Filter criteria"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "content.update.json",
+						"criteria":  cmd.String("criteria"),
+						"json_data": cmd.String("json"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "insert-json",
+				Usage: "Insert row with JSON data",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.IntFlag{Name: "row-index", Required: true, Usage: "Row index to insert at"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "content.insert.json",
+						"row_index": fmt.Sprintf("%d", cmd.Int("row-index")),
+						"json_data": cmd.String("json"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "clear-contents",
+				Usage: "Clear contents of range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "range", Required: true, Usage: "Range reference"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "content.clear",
+						"range":  cmd.String("range"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "clear-range",
+				Usage: "Clear range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "range", Required: true, Usage: "Range reference"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "range.clear",
+						"range":  cmd.String("range"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "clear-filters",
+				Usage: "Clear filters",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "filter.clear"}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "find",
+				Usage: "Find content",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "search-value", Required: true, Usage: "Value to search for"},
+					&cli.StringFlag{Name: "match-type", Usage: "Match type"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":       "content.find",
+						"search_value": cmd.String("search-value"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.String("match-type"); v != "" {
+						params["match_type"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "find-replace",
+				Usage: "Find and replace content",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "search-value", Required: true, Usage: "Value to search for"},
+					&cli.StringFlag{Name: "replace-value", Required: true, Usage: "Replacement value"},
+					&cli.StringFlag{Name: "match-type", Usage: "Match type"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":        "content.findreplace",
+						"search_value":  cmd.String("search-value"),
+						"replace_value": cmd.String("replace-value"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.String("match-type"); v != "" {
+						params["match_type"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "recalculate",
+				Usage: "Recalculate workbook",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "workbook.recalculate"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func formatCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "format",
+		Usage: "Formatting and structure operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "ranges",
+				Usage: "Format ranges",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "format-json", Required: true, Usage: "Format JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":      "format.ranges",
+						"format_json": cmd.String("format-json"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "image-fit",
+				Usage: "Image fit options",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "image-json", Required: true, Usage: "Image JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":     "workbook.images.fit",
+						"image_json": cmd.String("image-json"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "row-height",
+				Usage: "Set row height",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "row", Required: true, Usage: "Row number"},
+					&cli.IntFlag{Name: "height", Required: true, Usage: "Height in pixels"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "row.height.set",
+						"row":    fmt.Sprintf("%d", cmd.Int("row")),
+						"height": fmt.Sprintf("%d", cmd.Int("height")),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "column-width",
+				Usage: "Set column width",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "column", Required: true, Usage: "Column number"},
+					&cli.IntFlag{Name: "width", Required: true, Usage: "Width in pixels"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "column.width.set",
+						"column": fmt.Sprintf("%d", cmd.Int("column")),
+						"width":  fmt.Sprintf("%d", cmd.Int("width")),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "insert-row",
+				Usage: "Insert row",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "row", Required: true, Usage: "Row number"},
+					&cli.IntFlag{Name: "count", Usage: "Number of rows to insert"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "row.insert",
+						"row":    fmt.Sprintf("%d", cmd.Int("row")),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("count"); v > 0 {
+						params["count"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "insert-column",
+				Usage: "Insert column",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "column", Required: true, Usage: "Column number"},
+					&cli.IntFlag{Name: "count", Usage: "Number of columns to insert"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "column.insert",
+						"column": fmt.Sprintf("%d", cmd.Int("column")),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("count"); v > 0 {
+						params["count"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete-row",
+				Usage: "Delete row",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "row", Required: true, Usage: "Row number"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "row.delete",
+						"row":    fmt.Sprintf("%d", cmd.Int("row")),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete-rows",
+				Usage: "Delete multiple rows",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "start-row", Required: true, Usage: "Start row"},
+					&cli.IntFlag{Name: "end-row", Required: true, Usage: "End row"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "rows.delete",
+						"start_row": fmt.Sprintf("%d", cmd.Int("start-row")),
+						"end_row":   fmt.Sprintf("%d", cmd.Int("end-row")),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete-column",
+				Usage: "Delete column",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "column", Required: true, Usage: "Column number"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "column.delete",
+						"column": fmt.Sprintf("%d", cmd.Int("column")),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "set-note",
+				Usage: "Set note to cell",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "cell", Required: true, Usage: "Cell reference (e.g. A1)"},
+					&cli.StringFlag{Name: "note", Required: true, Usage: "Note text"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "cell.note.set",
+						"cell":   cmd.String("cell"),
+						"note":   cmd.String("note"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func namedRangesCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "named-ranges",
+		Usage: "Named range operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "list",
+				Usage: "List all named ranges",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "namedrange.list"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "create",
+				Usage: "Create named range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "name", Required: true, Usage: "Named range name"},
+					&cli.StringFlag{Name: "range", Required: true, Usage: "Range reference"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "namedrange.create",
+						"name":   cmd.String("name"),
+						"range":  cmd.String("range"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "update",
+				Usage: "Update named range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "name", Required: true, Usage: "Named range name"},
+					&cli.StringFlag{Name: "range", Required: true, Usage: "Range reference"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "namedrange.update",
+						"name":   cmd.String("name"),
+						"range":  cmd.String("range"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "Delete named range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "name", Required: true, Usage: "Named range name"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "namedrange.delete",
+						"name":   cmd.String("name"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func mergeCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "merge",
+		Usage: "Merge template operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "templates",
+				Usage: "Get merge templates",
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "merge.templates.list"}
+					raw, err := c.Request("POST", c.SheetBase+"/workbooks", &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "fields",
+				Usage: "Get merge fields",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "merge.fields.get"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "jobs",
+				Usage: "Get merge jobs",
+				Flags: []cli.Flag{
+					workbookFlag,
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "merge.jobs.list"}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "job-detail",
+				Usage: "Get merge job details",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "job-id", Required: true, Usage: "Job ID"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "merge.job.get",
+						"job_id": cmd.String("job-id"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "save",
+				Usage: "Merge and save",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "merge-data", Required: true, Usage: "Merge data JSON"},
+					&cli.StringFlag{Name: "output-settings", Required: true, Usage: "Output settings JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":          "merge.save",
+						"merge_data":      cmd.String("merge-data"),
+						"output_settings": cmd.String("output-settings"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "email",
+				Usage: "Merge and email",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "merge-data", Required: true, Usage: "Merge data JSON"},
+					&cli.StringFlag{Name: "email-settings", Required: true, Usage: "Email settings JSON"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":         "merge.email",
+						"merge_data":     cmd.String("merge-data"),
+						"email_settings": cmd.String("email-settings"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func premiumCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "premium",
+		Usage: "Premium API operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "fetch-records",
+				Usage: "Fetch records (premium)",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.StringFlag{Name: "criteria", Usage: "Filter criteria"},
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{"method": "premium.records.fetch"}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.String("criteria"); v != "" {
+						params["criteria"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "add-records",
+				Usage: "Add records (premium)",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "premium.records.add",
+						"json_data": cmd.String("json"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "update-records",
+				Usage: "Update records (premium)",
+				Flags: []cli.Flag{
+					workbookFlag,
+					worksheetFlag,
+					&cli.IntFlag{Name: "header-row", Usage: "Header row number"},
+					&cli.StringFlag{Name: "criteria", Required: true, Usage: "Filter criteria"},
+					&cli.StringFlag{Name: "json", Required: true, Usage: "JSON data"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method":    "premium.records.update",
+						"criteria":  cmd.String("criteria"),
+						"json_data": cmd.String("json"),
+					}
+					if v := cmd.String("worksheet"); v != "" {
+						params["worksheet_name"] = v
+					}
+					if v := cmd.Int("header-row"); v > 0 {
+						params["header_row"] = fmt.Sprintf("%d", v)
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}
+
+func utilityCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "utility",
+		Usage: "Utility operations",
+		Commands: []*cli.Command{
+			{
+				Name:  "range-to-index",
+				Usage: "Convert range to index",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.StringFlag{Name: "range", Required: true, Usage: "Range reference"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "range.to.index",
+						"range":  cmd.String("range"),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "index-to-range",
+				Usage: "Convert index to range",
+				Flags: []cli.Flag{
+					workbookFlag,
+					&cli.IntFlag{Name: "row", Required: true, Usage: "Row number"},
+					&cli.IntFlag{Name: "column", Required: true, Usage: "Column number"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					params := map[string]string{
+						"method": "index.to.range",
+						"row":    fmt.Sprintf("%d", cmd.Int("row")),
+						"column": fmt.Sprintf("%d", cmd.Int("column")),
+					}
+					raw, err := c.Request("POST", c.SheetBase+"/"+cmd.String("workbook"), &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+		},
+	}
+}

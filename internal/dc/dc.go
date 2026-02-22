@@ -6,6 +6,7 @@ type DCConfig struct {
 	CRM       string
 	Expense   string
 	Projects  string
+	Sheet     string
 	WorkDrive string
 	Writer    string
 	Download  string
@@ -18,6 +19,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.com",
 		Expense:   "https://www.zohoapis.com",
 		Projects:  "https://projectsapi.zoho.com",
+		Sheet:     "https://sheet.zoho.com",
 		WorkDrive: "https://workdrive.zoho.com",
 		Writer:    "https://www.zohoapis.com/writer",
 		Download:  "https://download.zoho.com",
@@ -28,6 +30,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.eu",
 		Expense:   "https://www.zohoapis.eu",
 		Projects:  "https://projectsapi.zoho.eu",
+		Sheet:     "https://sheet.zoho.eu",
 		WorkDrive: "https://workdrive.zoho.eu",
 		Writer:    "https://www.zohoapis.eu/writer",
 		Download:  "https://download.zoho.eu",
@@ -38,6 +41,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.in",
 		Expense:   "https://www.zohoapis.in",
 		Projects:  "https://projectsapi.zoho.in",
+		Sheet:     "https://sheet.zoho.in",
 		WorkDrive: "https://workdrive.zoho.in",
 		Writer:    "https://www.zohoapis.in/writer",
 		Download:  "https://download.zoho.in",
@@ -48,6 +52,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.com.au",
 		Expense:   "https://www.zohoapis.com.au",
 		Projects:  "https://projectsapi.zoho.com.au",
+		Sheet:     "https://sheet.zoho.com.au",
 		WorkDrive: "https://workdrive.zoho.com.au",
 		Writer:    "https://www.zohoapis.com.au/writer",
 		Download:  "https://download.zoho.com.au",
@@ -58,6 +63,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.jp",
 		Expense:   "https://www.zohoapis.jp",
 		Projects:  "https://projectsapi.zoho.jp",
+		Sheet:     "https://sheet.zoho.jp",
 		WorkDrive: "https://workdrive.zoho.jp",
 		Writer:    "https://www.zohoapis.jp/writer",
 		Download:  "https://download.zoho.jp",
@@ -68,6 +74,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.ca",
 		Expense:   "https://www.zohoapis.ca",
 		Projects:  "https://projectsapi.zohocloud.ca",
+		Sheet:     "https://sheet.zohocloud.ca",
 		WorkDrive: "https://workdrive.zohocloud.ca",
 		Writer:    "https://www.zohoapis.ca/writer",
 		Download:  "https://download.zohocloud.ca",
@@ -78,6 +85,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.sa",
 		Expense:   "https://www.zohoapis.sa",
 		Projects:  "https://projectsapi.zoho.sa",
+		Sheet:     "https://sheet.zoho.sa",
 		WorkDrive: "https://workdrive.zoho.sa",
 		Writer:    "https://www.zohoapis.sa/writer",
 		Download:  "https://download.zoho.sa",
@@ -88,6 +96,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.uk",
 		Expense:   "https://www.zohoapis.uk",
 		Projects:  "https://projectsapi.zoho.uk",
+		Sheet:     "https://sheet.zoho.uk",
 		WorkDrive: "https://workdrive.zoho.uk",
 		Writer:    "https://www.zohoapis.uk/writer",
 		Download:  "https://download.zoho.uk",
@@ -98,6 +107,7 @@ var dcMap = map[string]DCConfig{
 		CRM:       "https://zohoapis.com.cn",
 		Expense:   "https://www.zohoapis.com.cn",
 		Projects:  "https://projectsapi.zoho.com.cn",
+		Sheet:     "https://sheet.zoho.com.cn",
 		WorkDrive: "https://workdrive.zoho.com.cn",
 		Writer:    "https://www.zohoapis.com.cn/writer",
 		Download:  "https://download.zoho.com.cn",
@@ -116,8 +126,9 @@ func GetDC(dc string) DCConfig {
 func AccountsURL(dc string) string  { return GetDC(dc).Accounts }
 func CliqURL(dc string) string      { return GetDC(dc).Cliq }
 func CRMURL(dc string) string       { return GetDC(dc).CRM }
+func ExpenseURL(dc string) string   { return GetDC(dc).Expense }
 func ProjectsURL(dc string) string  { return GetDC(dc).Projects }
+func SheetURL(dc string) string     { return GetDC(dc).Sheet }
 func WorkDriveURL(dc string) string { return GetDC(dc).WorkDrive }
 func WriterURL(dc string) string    { return GetDC(dc).Writer }
-func ExpenseURL(dc string) string   { return GetDC(dc).Expense }
 func DownloadURL(dc string) string  { return GetDC(dc).Download }
