@@ -54,6 +54,14 @@ tk blocked             # Show blocked issues
 ### Reference implementations
 - `~/Projects/work/rhi/ai_agent/rhi-agent/src/zoho/` (original endpoints)
 
+## Environment Variables
+
+- `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_DC` - Auth (handled in internal/auth/config.go)
+- `ZOHO_PORTAL_ID` - Default for `--portal` flag (Projects commands)
+- `ZOHO_TEAM_ID` - Default for `--team` flag (WorkDrive commands)
+
+Flag passed on CLI always overrides the env var. If neither is set, commands fail with a clear error.
+
 ## Conventions
 
 - No comments in code unless asked

@@ -12,7 +12,7 @@ Things the CLI handles internally, plus things you need to know.
 
 ## Projects
 
-- **Every command needs `--portal`.** Get your portal ID from `zoho projects core list`.
+- **Every command needs a portal ID.** Pass `--portal` or set `ZOHO_PORTAL_ID` env var. Get your portal ID from `zoho projects core list`.
 - **`has_next_page` can be string `"true"` or boolean `true`** depending on the endpoint. The CLI normalizes this.
 - **Pagination is index-based** (range=0-99, range=100-199). The CLI handles this when you use `--all`.
 

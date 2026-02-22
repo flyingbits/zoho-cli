@@ -86,7 +86,7 @@ zoho projects tasks create --portal PORTAL_ID --project PROJECT_ID --name "Task 
 zoho projects issues list --portal PORTAL_ID --project PROJECT_ID
 ```
 
-Every Projects command needs `--portal`. Get portal IDs from `zoho projects core list`.
+Every Projects command needs `--portal`. You can set `ZOHO_PORTAL_ID` env var instead of passing it every time. The flag overrides the env var.
 
 ### WorkDrive
 
@@ -100,7 +100,7 @@ zoho drive upload ./file.xlsx --folder FOLDER_ID
 zoho drive share add FILE_ID --email user@company.com --role editor
 ```
 
-Navigate top-down: teams -> folders -> files.
+Navigate top-down: teams -> folders -> files. Set `ZOHO_TEAM_ID` env var to avoid passing `--team` every time. The flag overrides the env var.
 
 ### Writer
 

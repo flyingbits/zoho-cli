@@ -277,7 +277,7 @@ zoho crm tags remove <module> --ids "id1,id2" --tags "tag1,tag2"
 
 ## projects
 
-All Projects commands need `--portal PORTAL_ID`. Get your portal ID from `zoho projects core list`.
+All Projects commands need a portal ID. Pass `--portal PORTAL_ID` or set `ZOHO_PORTAL_ID` env var. The flag overrides the env var.
 
 ### zoho projects core list
 
@@ -548,7 +548,7 @@ zoho drive teams members <team-id>
 List top-level team folders.
 
 ```
-zoho drive folders list --team TEAM_ID
+zoho drive folders list --team TEAM_ID    # or set ZOHO_TEAM_ID env var
 ```
 
 ### zoho drive folders create
@@ -582,7 +582,7 @@ zoho drive files get <file-id>
 ### zoho drive files search
 
 ```
-zoho drive files search --query "keyword" --team TEAM_ID [--mode all|name|content] [--type ...]
+zoho drive files search --query "keyword" --team TEAM_ID [--mode all|name|content] [--type ...]    # or set ZOHO_TEAM_ID env var
 ```
 
 ### zoho drive files rename

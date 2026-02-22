@@ -200,6 +200,17 @@ zoho drive files list --folder FOLDER_ID | jq -r '.[].id' | xargs -I{} zoho driv
 zoho projects tasks my --portal 12345 | jq '[.[] | select(.end_date < "2025-01-01")]'
 ```
 
+## Default IDs via environment
+
+If you use the same portal or team repeatedly, set these env vars to skip the flags:
+
+```bash
+export ZOHO_PORTAL_ID=12345        # default for --portal (Projects commands)
+export ZOHO_TEAM_ID=abc123         # default for --team (WorkDrive commands)
+```
+
+The flag always overrides the env var. If neither is set, the command fails with a clear error.
+
 ## Data centers
 
 Zoho runs in 9 data centers. Set via `ZOHO_DC` env var or `--dc` flag on auth commands:
