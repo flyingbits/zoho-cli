@@ -2,6 +2,7 @@ package drive
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/omin8tor/zoho-cli/internal/auth"
@@ -35,6 +36,14 @@ func getClient() (*zohttp.Client, error) {
 		return nil, err
 	}
 	return zohttp.NewClient(config)
+}
+
+func requireTeam(cmd *cli.Command) (string, error) {
+	v := cmd.String("team")
+	if v == "" {
+		return "", fmt.Errorf("--team is required (or set ZOHO_TEAM_ID env var)")
+	}
+	return v, nil
 }
 
 func jsonapiBody(attrs map[string]any) map[string]any {
@@ -116,7 +125,7 @@ func filesCmd() *cli.Command {
 				Usage: "Search files",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "query", Required: true, Usage: "Search keyword"},
-					&cli.StringFlag{Name: "team", Required: true, Usage: "Team ID"},
+					&cli.StringFlag{Name: "team", Usage: "Team ID", Sources: cli.EnvVars("ZOHO_TEAM_ID")},
 					&cli.StringFlag{Name: "mode", Value: "all", Usage: "all, name, or content"},
 					&cli.StringFlag{Name: "type", Usage: "Filter by type"},
 				},
@@ -125,7 +134,11 @@ func filesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := c.WorkDriveBase + "/teams/" + cmd.String("team") + "/records"
+					team, err := requireTeam(cmd)
+					if err != nil {
+						return err
+					}
+					url := c.WorkDriveBase + "/teams/" + team + "/records"
 					mode := cmd.String("mode")
 					params := map[string]string{"search[" + mode + "]": cmd.String("query")}
 					if t := cmd.String("type"); t != "" {
@@ -315,14 +328,18 @@ func foldersCmd() *cli.Command {
 				Name:  "list",
 				Usage: "List team folders",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "team", Required: true, Usage: "Team ID"},
+					&cli.StringFlag{Name: "team", Usage: "Team ID", Sources: cli.EnvVars("ZOHO_TEAM_ID")},
 				},
 				Action: func(_ context.Context, cmd *cli.Command) error {
 					c, err := getClient()
 					if err != nil {
 						return err
 					}
-					url := c.WorkDriveBase + "/teams/" + cmd.String("team") + "/teamfolders"
+					team, err := requireTeam(cmd)
+					if err != nil {
+						return err
+					}
+					url := c.WorkDriveBase + "/teams/" + team + "/teamfolders"
 					items, err := pagination.PaginateWorkDrive(c, url, nil, 0)
 					if err != nil {
 						return err

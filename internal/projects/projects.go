@@ -24,8 +24,16 @@ func base(c *zohttp.Client, portal, project string) string {
 	return c.ProjectsBase + "/portal/" + portal + "/projects/" + project
 }
 
-var portalFlag = &cli.StringFlag{Name: "portal", Required: true, Usage: "Portal ID"}
+var portalFlag = &cli.StringFlag{Name: "portal", Usage: "Portal ID", Sources: cli.EnvVars("ZOHO_PORTAL_ID")}
 var projectFlag = &cli.StringFlag{Name: "project", Required: true, Usage: "Project ID"}
+
+func requirePortal(cmd *cli.Command) (string, error) {
+	v := cmd.String("portal")
+	if v == "" {
+		return "", fmt.Errorf("--portal is required (or set ZOHO_PORTAL_ID env var)")
+	}
+	return v, nil
+}
 
 func Commands() *cli.Command {
 	return &cli.Command{
@@ -60,7 +68,11 @@ func projectsCoreCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := c.ProjectsBase + "/portal/" + cmd.String("portal") + "/projects"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := c.ProjectsBase + "/portal/" + portal + "/projects"
 					items, err := pagination.PaginateProjects(c, url, "", nil, 0)
 					if err != nil {
 						return err
@@ -78,7 +90,11 @@ func projectsCoreCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := c.ProjectsBase + "/portal/" + cmd.String("portal") + "/projects/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := c.ProjectsBase + "/portal/" + portal + "/projects/" + cmd.Args().First()
 					raw, err := c.Request("GET", url, nil)
 					if err != nil {
 						return err
@@ -98,7 +114,11 @@ func projectsCoreCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := c.ProjectsBase + "/portal/" + cmd.String("portal") + "/search"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := c.ProjectsBase + "/portal/" + portal + "/search"
 					raw, err := c.Request("GET", url, &zohttp.RequestOpts{
 						Params: map[string]string{
 							"search_term": cmd.String("query"),
@@ -125,6 +145,10 @@ func projectsCoreCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					body := map[string]any{"name": cmd.String("name")}
 					if j := cmd.String("json"); j != "" {
 						var extra map[string]any
@@ -133,7 +157,7 @@ func projectsCoreCmd() *cli.Command {
 							body[k] = v
 						}
 					}
-					url := c.ProjectsBase + "/portal/" + cmd.String("portal") + "/projects"
+					url := c.ProjectsBase + "/portal/" + portal + "/projects"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: body})
 					if err != nil {
 						return err
@@ -154,9 +178,13 @@ func projectsCoreCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					var parsed map[string]any
 					json.Unmarshal([]byte(cmd.String("json")), &parsed)
-					url := c.ProjectsBase + "/portal/" + cmd.String("portal") + "/projects/" + cmd.Args().First()
+					url := c.ProjectsBase + "/portal/" + portal + "/projects/" + cmd.Args().First()
 					raw, err := c.Request("PATCH", url, &zohttp.RequestOpts{JSON: parsed})
 					if err != nil {
 						return err
@@ -186,7 +214,11 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks"
 					params := map[string]string{}
 					if s := cmd.String("status"); s != "" {
 						params["status"] = s
@@ -214,7 +246,11 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := c.ProjectsBase + "/portal/" + cmd.String("portal") + "/tasks"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := c.ProjectsBase + "/portal/" + portal + "/tasks"
 					params := map[string]string{}
 					if s := cmd.String("status"); s != "" {
 						params["status"] = s
@@ -239,7 +275,11 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.Args().First()
 					raw, err := c.Request("GET", url, nil)
 					if err != nil {
 						return err
@@ -260,6 +300,10 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					body := map[string]any{"name": cmd.String("name")}
 					if j := cmd.String("json"); j != "" {
 						var extra map[string]any
@@ -268,7 +312,7 @@ func tasksCmd() *cli.Command {
 							body[k] = v
 						}
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks"
+					url := base(c, portal, cmd.String("project")) + "/tasks"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: body})
 					if err != nil {
 						return err
@@ -289,9 +333,13 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					var parsed map[string]any
 					json.Unmarshal([]byte(cmd.String("json")), &parsed)
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.Args().First()
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.Args().First()
 					raw, err := c.Request("PATCH", url, &zohttp.RequestOpts{JSON: parsed})
 					if err != nil {
 						return err
@@ -309,7 +357,11 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.Args().First()
 					raw, err := c.Request("DELETE", url, nil)
 					if err != nil {
 						return err
@@ -327,7 +379,11 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.Args().First() + "/subtasks"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.Args().First() + "/subtasks"
 					raw, err := c.Request("GET", url, nil)
 					if err != nil {
 						return err
@@ -349,6 +405,10 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					body := map[string]any{"name": cmd.String("name")}
 					if j := cmd.String("json"); j != "" {
 						var extra map[string]any
@@ -357,7 +417,7 @@ func tasksCmd() *cli.Command {
 							body[k] = v
 						}
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.String("parent") + "/subtasks"
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.String("parent") + "/subtasks"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: body})
 					if err != nil {
 						return err
@@ -383,7 +443,11 @@ func issuesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/issues"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/issues"
 					items, err := pagination.PaginateProjects(c, url, "issues", nil, 0)
 					if err != nil {
 						return err
@@ -401,7 +465,11 @@ func issuesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/issues/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/issues/" + cmd.Args().First()
 					raw, err := c.Request("GET", url, nil)
 					if err != nil {
 						return err
@@ -422,6 +490,10 @@ func issuesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					body := map[string]any{"name": cmd.String("name")}
 					if j := cmd.String("json"); j != "" {
 						var extra map[string]any
@@ -430,7 +502,7 @@ func issuesCmd() *cli.Command {
 							body[k] = v
 						}
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/issues"
+					url := base(c, portal, cmd.String("project")) + "/issues"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: body})
 					if err != nil {
 						return err
@@ -451,9 +523,13 @@ func issuesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					var parsed map[string]any
 					json.Unmarshal([]byte(cmd.String("json")), &parsed)
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/issues/" + cmd.Args().First()
+					url := base(c, portal, cmd.String("project")) + "/issues/" + cmd.Args().First()
 					raw, err := c.Request("PATCH", url, &zohttp.RequestOpts{JSON: parsed})
 					if err != nil {
 						return err
@@ -471,7 +547,11 @@ func issuesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/issues/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/issues/" + cmd.Args().First()
 					raw, err := c.Request("DELETE", url, nil)
 					if err != nil {
 						return err
@@ -488,7 +568,11 @@ func issuesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/issues/defaultfields"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/issues/defaultfields"
 					raw, err := c.Request("GET", url, nil)
 					if err != nil {
 						return err
@@ -517,7 +601,11 @@ func issueCommentsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/issues/" + cmd.String("issue") + "/comments"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/issues/" + cmd.String("issue") + "/comments"
 					raw, err := c.Request("GET", url, nil)
 					if err != nil {
 						return err
@@ -538,7 +626,11 @@ func issueCommentsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/issues/" + cmd.String("issue") + "/comments"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/issues/" + cmd.String("issue") + "/comments"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: map[string]string{"comment": cmd.String("comment")}})
 					if err != nil {
 						return err
@@ -567,7 +659,11 @@ func commentsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.String("task") + "/comments"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.String("task") + "/comments"
 					raw, err := c.Request("GET", url, nil)
 					if err != nil {
 						return err
@@ -588,7 +684,11 @@ func commentsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.String("task") + "/comments"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.String("task") + "/comments"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: map[string]string{"comment": cmd.String("comment")}})
 					if err != nil {
 						return err
@@ -610,7 +710,11 @@ func commentsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.String("task") + "/comments/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.String("task") + "/comments/" + cmd.Args().First()
 					raw, err := c.Request("PATCH", url, &zohttp.RequestOpts{JSON: map[string]string{"comment": cmd.String("comment")}})
 					if err != nil {
 						return err
@@ -631,7 +735,11 @@ func commentsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.String("task") + "/comments/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.String("task") + "/comments/" + cmd.Args().First()
 					raw, err := c.Request("DELETE", url, nil)
 					if err != nil {
 						return err
@@ -657,7 +765,11 @@ func tasklistsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasklists"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasklists"
 					items, err := pagination.PaginateProjects(c, url, "tasklists", nil, 0)
 					if err != nil {
 						return err
@@ -678,6 +790,10 @@ func tasklistsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					body := map[string]any{"name": cmd.String("name")}
 					if j := cmd.String("json"); j != "" {
 						var extra map[string]any
@@ -686,7 +802,7 @@ func tasklistsCmd() *cli.Command {
 							body[k] = v
 						}
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasklists"
+					url := base(c, portal, cmd.String("project")) + "/tasklists"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: body})
 					if err != nil {
 						return err
@@ -707,9 +823,13 @@ func tasklistsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					var parsed map[string]any
 					json.Unmarshal([]byte(cmd.String("json")), &parsed)
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasklists/" + cmd.Args().First()
+					url := base(c, portal, cmd.String("project")) + "/tasklists/" + cmd.Args().First()
 					raw, err := c.Request("PATCH", url, &zohttp.RequestOpts{JSON: parsed})
 					if err != nil {
 						return err
@@ -727,7 +847,11 @@ func tasklistsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasklists/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasklists/" + cmd.Args().First()
 					raw, err := c.Request("DELETE", url, nil)
 					if err != nil {
 						return err
@@ -756,7 +880,11 @@ func timelogsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/timelogs"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/timelogs"
 					moduleJSON := fmt.Sprintf(`{"type":"%s"}`, cmd.String("module"))
 					raw, err := c.Request("GET", url, &zohttp.RequestOpts{
 						Params: map[string]string{
@@ -786,6 +914,10 @@ func timelogsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					body := map[string]any{
 						"date":        cmd.String("date"),
 						"hours":       cmd.String("hours"),
@@ -801,7 +933,7 @@ func timelogsCmd() *cli.Command {
 					} else {
 						body["module"] = map[string]string{"type": "general"}
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/log"
+					url := base(c, portal, cmd.String("project")) + "/log"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: body})
 					if err != nil {
 						return err
@@ -827,7 +959,11 @@ func usersCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/users"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/users"
 					items, err := pagination.PaginateProjects(c, url, "users", nil, 0)
 					if err != nil {
 						return err
@@ -853,7 +989,11 @@ func milestonesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/milestones"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/milestones"
 					items, err := pagination.PaginateProjects(c, url, "milestones", nil, 0)
 					if err != nil {
 						return err
@@ -871,7 +1011,11 @@ func milestonesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/milestones/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/milestones/" + cmd.Args().First()
 					raw, err := c.Request("GET", url, nil)
 					if err != nil {
 						return err
@@ -894,6 +1038,10 @@ func milestonesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					body := map[string]any{
 						"name":       cmd.String("name"),
 						"start_date": cmd.String("start"),
@@ -906,7 +1054,7 @@ func milestonesCmd() *cli.Command {
 							body[k] = v
 						}
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/milestones"
+					url := base(c, portal, cmd.String("project")) + "/milestones"
 					raw, err := c.Request("POST", url, &zohttp.RequestOpts{JSON: body})
 					if err != nil {
 						return err
@@ -927,9 +1075,13 @@ func milestonesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
 					var parsed map[string]any
 					json.Unmarshal([]byte(cmd.String("json")), &parsed)
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/milestones/" + cmd.Args().First()
+					url := base(c, portal, cmd.String("project")) + "/milestones/" + cmd.Args().First()
 					raw, err := c.Request("PATCH", url, &zohttp.RequestOpts{JSON: parsed})
 					if err != nil {
 						return err
@@ -947,7 +1099,11 @@ func milestonesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/milestones/" + cmd.Args().First()
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/milestones/" + cmd.Args().First()
 					raw, err := c.Request("DELETE", url, nil)
 					if err != nil {
 						return err
@@ -978,7 +1134,11 @@ func dependenciesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.Args().First() + "/dependencies"
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.Args().First() + "/dependencies"
 					body := map[string]any{
 						"predecessor": map[string]string{
 							"id":   cmd.String("depends-on"),
@@ -1002,7 +1162,11 @@ func dependenciesCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := base(c, cmd.String("portal"), cmd.String("project")) + "/tasks/" + cmd.Args().Get(0) + "/dependencies/" + cmd.Args().Get(1)
+					portal, err := requirePortal(cmd)
+					if err != nil {
+						return err
+					}
+					url := base(c, portal, cmd.String("project")) + "/tasks/" + cmd.Args().Get(0) + "/dependencies/" + cmd.Args().Get(1)
 					raw, err := c.Request("DELETE", url, nil)
 					if err != nil {
 						return err
