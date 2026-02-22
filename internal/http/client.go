@@ -25,6 +25,7 @@ type Client struct {
 	WorkDriveBase string
 	WriterBase    string
 	CliqBase      string
+	ExpenseBase   string
 	DownloadBase  string
 }
 
@@ -44,6 +45,7 @@ func NewClient(config *auth.AuthConfig) (*Client, error) {
 		WorkDriveBase: dc.WorkDriveURL(d) + "/api/v1",
 		WriterBase:    dc.WriterURL(d) + "/api/v1",
 		CliqBase:      dc.CliqURL(d),
+		ExpenseBase:   dc.ExpenseURL(d) + "/expense/v1",
 		DownloadBase:  dc.DownloadURL(d),
 	}, nil
 }
