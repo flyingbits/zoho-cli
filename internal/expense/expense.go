@@ -159,6 +159,28 @@ func expensesCmd() *cli.Command {
 		Usage: "Expense operations",
 		Commands: []*cli.Command{
 			{
+				Name:      "get",
+				Usage:     "Get an expense",
+				ArgsUsage: "<expense-id>",
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					orgID, err := resolveOrgID(cmd)
+					if err != nil {
+						return err
+					}
+					raw, err := c.Request("GET", c.ExpenseBase+"/expenses/"+cmd.Args().First(), &zohttp.RequestOpts{
+						Headers: orgHeaders(orgID),
+					})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
 				Name:  "list",
 				Usage: "List expenses",
 				Flags: []cli.Flag{
@@ -1783,11 +1805,11 @@ func receiptsCmd() *cli.Command {
 		Usage: "Receipt operations",
 		Commands: []*cli.Command{
 			{
-				Name:      "upload",
-				Usage:     "Upload a receipt for an expense",
-				ArgsUsage: "<expense-id>",
+				Name:  "upload",
+				Usage: "Upload a receipt (autoscan) or attach to an expense",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "file", Required: true, Usage: "Path to receipt file"},
+					&cli.StringFlag{Name: "expense-id", Usage: "Expense ID to attach receipt to (omit for autoscan only)"},
 				},
 				Action: func(_ context.Context, cmd *cli.Command) error {
 					c, err := getClient()
@@ -1804,11 +1826,14 @@ func receiptsCmd() *cli.Command {
 						return fmt.Errorf("failed to read file: %w", err)
 					}
 					name := filepath.Base(filePath)
-					raw, err := c.Request("POST", c.ExpenseBase+"/expenses", &zohttp.RequestOpts{
+					opts := &zohttp.RequestOpts{
 						Files:   map[string]zohttp.FileUpload{"receipt": {Filename: name, Data: data}},
-						Form:    map[string]string{"expense_id": cmd.Args().First()},
 						Headers: orgHeaders(orgID),
-					})
+					}
+					if expID := cmd.String("expense-id"); expID != "" {
+						opts.Form = map[string]string{"expense_id": expID}
+					}
+					raw, err := c.Request("POST", c.ExpenseBase+"/expenses", opts)
 					if err != nil {
 						return err
 					}
@@ -1885,7 +1910,31 @@ func tagsCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
+					raw, err := c.Request("GET", v3Base(c)+"/reportingtags/"+cmd.Args().First(), &zohttp.RequestOpts{
+						Headers: orgHeaders(orgID),
+					})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:      "set-default-option",
+				Usage:     "Mark an option as default for a reporting tag",
+				ArgsUsage: "<tag-id> <option-id>",
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+					orgID, err := resolveOrgID(cmd)
+					if err != nil {
+						return err
+					}
+					body := map[string]string{"option_id": cmd.Args().Get(1)}
 					raw, err := c.Request("POST", v3Base(c)+"/reportingtags/"+cmd.Args().First(), &zohttp.RequestOpts{
+						JSON:    body,
 						Headers: orgHeaders(orgID),
 					})
 					if err != nil {
