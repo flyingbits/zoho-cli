@@ -2,7 +2,7 @@
 
 ## Project: zoho-cli
 
-CLI for Zoho REST APIs (CRM, Projects, WorkDrive, Writer, Cliq).
+CLI for Zoho REST APIs (CRM, Projects, WorkDrive, Writer, Cliq, Expense, Sheet, Mail, Books).
 
 ## Tech Stack
 
@@ -50,6 +50,10 @@ tk blocked             # Show blocked issues
 - `internal/drive/` - WorkDrive subcommands (26 commands)
 - `internal/writer/` - Writer subcommands (7 commands)
 - `internal/cliq/` - Cliq subcommands (12 commands)
+- `internal/mail/` - Mail subcommands (Organization, Domains, Groups, Users, Policy, Accounts, Folders, Labels, Messages, Signatures, Threads, Tasks, Bookmarks, Notes, Logs)
+- `internal/inventory/` - Inventory subcommands (Organizations, Contacts, Contact Persons, Item Groups, Items, Composite Items, Item Adjustments, Transfer Orders, Sales Orders, Packages, Shipment Orders, Invoices, Retainer Invoices, Customer Payments, Sales Returns, Credit Notes, Purchase Orders, Purchase Receives, Bills, Vendor Credits, Locations, Price Lists, Users, Taxes, Currency, Reporting Tags)
+- `internal/invoice/` - Invoice subcommands (Organizations, Items, Price Lists, Contacts, Contact Persons, Estimates, Invoices, Recurring Invoices, Customer Payments, Retainer Invoices, Credit Notes, Expenses, Recurring Expenses, Projects, Tasks, Time Entries, Users, Taxes, Expense Categories, Currency, CRM Integration)
+- `internal/books/` - Books subcommands (Zoho Books API v3)
 
 ### Reference implementations
 - `~/Projects/work/rhi/ai_agent/rhi-agent/src/zoho/` (original endpoints)
@@ -59,6 +63,12 @@ tk blocked             # Show blocked issues
 - `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_DC` - Auth (handled in internal/auth/config.go)
 - `ZOHO_PORTAL_ID` - Default for `--portal` flag (Projects commands)
 - `ZOHO_TEAM_ID` - Default for `--team` flag (WorkDrive commands)
+- `ZOHO_INVENTORY_ORG_ID` - Default for `--org` flag (Inventory commands)
+- `ZOHO_EXPENSE_ORG_ID` - Default for `--org` flag (Expense commands)
+- `ZOHO_MAIL_ORG_ID` - Default for `--org` flag (Mail org-level APIs)
+- `ZOHO_MAIL_ACCOUNT_ID` - Default for `--account` flag (Mail account-level APIs)
+- `ZOHO_INVOICE_ORG_ID` - Default for `--org` flag (Invoice commands)
+- `ZOHO_BOOKS_ORG_ID` - Default for `--org` flag (Books commands)
 
 Flag passed on CLI always overrides the env var. If neither is set, commands fail with a clear error.
 

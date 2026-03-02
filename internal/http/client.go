@@ -20,13 +20,17 @@ type Client struct {
 	Config        *auth.AuthConfig
 	HTTP          *http.Client
 	accessToken   string
+	BooksBase     string
+	InvoiceBase   string
 	CRMBase       string
+	MailBase      string
 	ProjectsBase  string
 	SheetBase     string
 	WorkDriveBase string
 	WriterBase    string
 	CliqBase      string
 	ExpenseBase   string
+	InventoryBase string
 	DownloadBase  string
 }
 
@@ -41,13 +45,17 @@ func NewClient(config *auth.AuthConfig) (*Client, error) {
 		Config:        config,
 		HTTP:          &http.Client{Timeout: 60 * time.Second},
 		accessToken:   token,
+		BooksBase:     dc.BooksURL(d) + "/books/v3",
+		InvoiceBase:   dc.BooksURL(d) + "/invoice/v3",
 		CRMBase:       dc.CRMURL(d) + "/crm/v8",
+		MailBase:      dc.MailURL(d) + "/api",
 		ProjectsBase:  dc.ProjectsURL(d) + "/api/v3",
 		SheetBase:     dc.SheetURL(d) + "/api/v2",
 		WorkDriveBase: dc.WorkDriveURL(d) + "/api/v1",
 		WriterBase:    dc.WriterURL(d) + "/api/v1",
 		CliqBase:      dc.CliqURL(d),
 		ExpenseBase:   dc.ExpenseURL(d) + "/expense/v1",
+		InventoryBase: dc.InventoryURL(d) + "/inventory/v1",
 		DownloadBase:  dc.DownloadURL(d),
 	}, nil
 }
