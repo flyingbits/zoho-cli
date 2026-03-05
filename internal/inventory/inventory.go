@@ -21,7 +21,7 @@ func getClient() (*zohttp.Client, error) {
 }
 
 func resolveOrgID(cmd *cli.Command) (string, error) {
-	for c := cmd; c != nil; c = c.Parent() {
+	for c := cmd; c != nil; c = c.Root() {
 		if c.Name == "inventory" {
 			if org := c.String("org"); org != "" {
 				return org, nil

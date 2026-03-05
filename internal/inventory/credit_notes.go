@@ -1,6 +1,7 @@
 package inventory
 
 import (
+	"fmt"
 	"context"
 	"encoding/json"
 
