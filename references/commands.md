@@ -703,10 +703,16 @@ zoho drive share unlink <link-id>
 
 ## writer
 
+### zoho writer list
+
+```
+zoho writer list [--offset N] [--limit N] [--sortby created_time|modified_time|name] [--sort-order-by ascending|descending] [--category all|shared_to_me|owned_by_me] [--type fillable|merge|sign]
+```
+
 ### zoho writer create
 
 ```
-zoho writer create --name "Doc Name" [--folder FOLDER_ID] [--type writer|sheet|show]
+zoho writer create [--filename "Doc Name"] [--type fillable|merge|sign]
 ```
 
 ### zoho writer details
@@ -728,7 +734,7 @@ zoho writer fields <doc-id>
 Merge data into a template and export.
 
 ```
-zoho writer merge <doc-id> --json '{"field":"value"}' [--format pdf|docx|inline] [--output path]
+zoho writer merge <doc-id> --json '{"field":"value"}' [--format pdf|pdfform|docx|html|zfdoc|zip|inline] [--output path]
 ```
 
 ### zoho writer delete
@@ -748,7 +754,7 @@ zoho writer read <doc-id> [--format txt|html]
 ### zoho writer download
 
 ```
-zoho writer download <doc-id> [--format txt|html|pdf|docx|odt|rtf|epub] [--output path]
+zoho writer download <doc-id> [--format zdoc|docx|odt|rtf|txt|html|pdf|zip|epub|pdfform] [--output path]
 ```
 
 ---

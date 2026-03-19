@@ -19,6 +19,7 @@ const DefaultScopes = "ZohoCliq.Webhooks.CREATE,ZohoCliq.Channels.ALL,ZohoCliq.M
 	"WorkDrive.links.ALL,WorkDrive.team.ALL,WorkDrive.teamfolders.ALL," +
 	"ZohoSearch.securesearch.READ," +
 	"ZohoWriter.documentEditor.ALL,ZohoPC.files.ALL," +
+	"WorkDrive.organization.ALL," +
 	"ZohoProjects.portals.ALL,ZohoProjects.projects.ALL,ZohoProjects.tasks.ALL," +
 	"ZohoProjects.tasklists.ALL,ZohoProjects.timesheets.ALL,ZohoProjects.bugs.ALL," +
 	"ZohoProjects.events.ALL,ZohoProjects.forums.ALL,ZohoProjects.milestones.ALL," +

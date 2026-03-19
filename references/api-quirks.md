@@ -28,7 +28,7 @@ Things the CLI handles internally, plus things you need to know.
 
 ## Writer
 
-- **No "list documents" endpoint.** You can't list Writer docs through the Writer API. Get document IDs from WorkDrive instead.
+- **List documents is supported** via `GET /writer/api/v1/documents`.
 - **Empty documents can't be exported.** Writer returns error R3002. The CLI surfaces this clearly.
 
 ## Token management

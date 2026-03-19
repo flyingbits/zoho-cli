@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/omin8tor/zoho-cli/internal/auth"
@@ -11,14 +12,6 @@ import (
 	"github.com/omin8tor/zoho-cli/internal/output"
 	"github.com/urfave/cli/v3"
 )
-
-const jsonapiCT = "application/vnd.api+json"
-
-var serviceTypeMap = map[string]string{
-	"writer": "zw",
-	"sheet":  "zohosheet",
-	"show":   "zohoshow",
-}
 
 func getClient() (*zohttp.Client, error) {
 	config, err := auth.ResolveAuth()
@@ -34,35 +27,63 @@ func Commands() *cli.Command {
 		Usage: "Zoho Writer operations",
 		Commands: []*cli.Command{
 			{
-				Name:  "create",
-				Usage: "Create a new Writer document",
+				Name:      "list",
+				Usage:     "List documents in your Writer account",
+				ArgsUsage: "",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "name", Required: true, Usage: "Document name"},
-					&cli.StringFlag{Name: "folder", Required: true, Usage: "Parent folder ID in WorkDrive"},
-					&cli.StringFlag{Name: "type", Value: "writer", Usage: "writer, sheet, or show"},
+					&cli.IntFlag{Name: "offset", Value: 0, Usage: "Pagination offset"},
+					&cli.IntFlag{Name: "limit", Value: 10, Usage: "Page size (number of documents)"},
+					&cli.StringFlag{Name: "sortby", Value: "modified_time", Usage: "Sort by: created_time, modified_time, or name"},
+					&cli.StringFlag{Name: "sort-order-by", Value: "descending", Usage: "Sort order: ascending or descending"},
+					&cli.StringFlag{Name: "category", Value: "all", Usage: "all, shared_to_me, or owned_by_me"},
+					&cli.StringFlag{Name: "type", Usage: "Document type filter: fillable, merge, or sign"},
 				},
 				Action: func(_ context.Context, cmd *cli.Command) error {
 					c, err := getClient()
 					if err != nil {
 						return err
 					}
-					st := "zw"
-					if mapped, ok := serviceTypeMap[cmd.String("type")]; ok {
-						st = mapped
+
+					params := map[string]string{
+						"offset":          strconv.Itoa(cmd.Int("offset")),
+						"limit":           strconv.Itoa(cmd.Int("limit")),
+						"sortby":          cmd.String("sortby"),
+						"sort_order_by":  cmd.String("sort-order-by"),
+						"category":       cmd.String("category"),
 					}
-					body := map[string]any{
-						"data": map[string]any{
-							"type": "files",
-							"attributes": map[string]any{
-								"name":         cmd.String("name"),
-								"parent_id":    cmd.String("folder"),
-								"service_type": st,
-							},
-						},
+					if t := cmd.String("type"); t != "" {
+						params["resource_type"] = t
 					}
-					raw, err := c.Request("POST", c.WorkDriveBase+"/files", &zohttp.RequestOpts{
-						JSON:    body,
-						Headers: map[string]string{"Content-Type": jsonapiCT},
+
+					raw, err := c.Request("GET", c.WriterBase+"/documents", &zohttp.RequestOpts{Params: params})
+					if err != nil {
+						return err
+					}
+					return output.JSONRaw(raw)
+				},
+			},
+			{
+				Name:  "create",
+				Usage: "Create/upload a new Writer document",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "filename", Usage: "Document name (optional). If omitted, Zoho creates an untitled blank document."},
+					&cli.StringFlag{Name: "type", Usage: "Document type: fillable, merge, or sign"},
+				},
+				Action: func(_ context.Context, cmd *cli.Command) error {
+					c, err := getClient()
+					if err != nil {
+						return err
+					}
+
+					form := map[string]string{}
+					if f := cmd.String("filename"); f != "" {
+						form["filename"] = f
+					}
+					if t := cmd.String("type"); t != "" {
+						form["resource_type"] = t
+					}
+					raw, err := c.Request("POST", c.WriterBase+"/documents", &zohttp.RequestOpts{
+						Form: form,
 					})
 					if err != nil {
 						return err
@@ -108,7 +129,7 @@ func Commands() *cli.Command {
 				ArgsUsage: "<doc-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "json", Required: true, Usage: "Merge data as JSON"},
-					&cli.StringFlag{Name: "format", Value: "pdf", Usage: "pdf, docx, or inline"},
+					&cli.StringFlag{Name: "format", Value: "pdf", Usage: "pdf, pdfform, docx, html, zfdoc, zip (use inline as alias for html)"},
 					&cli.StringFlag{Name: "output", Usage: "Output file path"},
 				},
 				Action: func(_ context.Context, cmd *cli.Command) error {
@@ -117,36 +138,51 @@ func Commands() *cli.Command {
 						return err
 					}
 					docID := cmd.Args().First()
+
 					var mergeData any
-					json.Unmarshal([]byte(cmd.String("json")), &mergeData)
-
-					if cmd.String("format") == "inline" {
-						body := map[string]any{
-							"merge_data":    mergeData,
-							"output_format": "inline",
-						}
-						raw, err := c.Request("POST", c.WriterBase+"/documents/"+docID+"/merge", &zohttp.RequestOpts{JSON: body})
-						if err != nil {
-							return err
-						}
-						return output.JSONRaw(raw)
+					if err := json.Unmarshal([]byte(cmd.String("json")), &mergeData); err != nil {
+						return err
 					}
 
-					params := map[string]string{
-						"output_format": cmd.String("format"),
+					format := cmd.String("format")
+					if format == "inline" {
+						format = "html"
 					}
-					mergeJSON, _ := json.Marshal(mergeData)
-					params["merge_data"] = string(mergeJSON)
-					body, _, _, err := c.RequestRaw("POST", c.WriterBase+"/documents/"+docID+"/merge", params)
+
+					outputSettings := map[string]any{
+						"format": format,
+					}
+					outputSettingsJSON, err := json.Marshal(outputSettings)
 					if err != nil {
 						return err
 					}
+
+					mergeJSON, err := json.Marshal(mergeData)
+					if err != nil {
+						return err
+					}
+
+					raw, err := c.Request("POST", c.WriterBase+"/documents/"+docID+"/merge", &zohttp.RequestOpts{
+						Form: map[string]string{
+							"output_settings": string(outputSettingsJSON),
+							"merge_data":      string(mergeJSON),
+						},
+					})
+					if err != nil {
+						if strings.Contains(err.Error(), "R3002") {
+							return output.JSON(map[string]string{"error": "Document is empty — Zoho cannot export empty documents (R3002)"})
+						}
+						return err
+					}
+
+					body := []byte(raw)
 					if out := cmd.String("output"); out != "" {
 						if err := os.WriteFile(out, body, 0644); err != nil {
 							return err
 						}
 						return output.JSON(map[string]any{"ok": true, "path": out, "size": len(body)})
 					}
+
 					os.Stdout.Write(body)
 					return nil
 				},
@@ -160,7 +196,7 @@ func Commands() *cli.Command {
 					if err != nil {
 						return err
 					}
-					raw, err := c.Request("DELETE", c.WriterBase+"/documents/"+cmd.Args().First(), nil)
+					raw, err := c.Request("DELETE", c.WriterBase+"/documents/"+cmd.Args().First()+"/delete", nil)
 					if err != nil {
 						return err
 					}
@@ -201,7 +237,7 @@ func Commands() *cli.Command {
 				Usage:     "Download a document",
 				ArgsUsage: "<doc-id>",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "format", Value: "txt", Usage: "txt, html, pdf, docx, odt, rtf, epub"},
+					&cli.StringFlag{Name: "format", Value: "docx", Usage: "zdoc, docx, odt, rtf, txt, html, pdf, zip, epub, pdfform"},
 					&cli.StringFlag{Name: "output", Usage: "Output file path"},
 				},
 				Action: func(_ context.Context, cmd *cli.Command) error {
