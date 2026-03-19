@@ -1,6 +1,6 @@
 # zoho-cli
 
-CLI for Zoho's REST APIs. Covers CRM, Projects, WorkDrive, Writer, and Cliq — 118 commands, single binary, JSON to stdout.
+CLI for Zoho's REST APIs. Covers CRM, Projects, WorkDrive, Writer, Cliq, Expense, Invoice, Inventory, and Mail — single binary, JSON to stdout — 797 commands total (added 679 commands for Mail/Expense/Invoice/Inventory).
 
 No other tool does this. Zoho's own CLIs (ZET, Catalyst) are for building extensions, not talking to the API. Their Python SDK covers CRM only and requires MySQL for token storage.
 
@@ -157,6 +157,12 @@ zoho drive upload ./quarterly.xlsx --folder FOLDER_ID
 
 ### Writer: work with documents
 
+List documents:
+
+```bash
+zoho writer list --limit 10
+```
+
 Get document details:
 
 ```bash
@@ -168,8 +174,6 @@ Merge data into a template and export as PDF:
 ```bash
 zoho writer merge DOC_ID --json '{"name":"Alice","date":"2025-01-15"}' --format pdf --output ./letter.pdf
 ```
-
-Get doc IDs from WorkDrive — Writer has no "list documents" endpoint.
 
 ### Cliq: send messages
 
@@ -183,6 +187,13 @@ Send a DM:
 
 ```bash
 zoho cliq buddies message someone@company.com --text "quarterly report is ready"
+```
+
+### Mail: send messages
+
+Send an email (user-level account API):
+```bash
+zoho mail messages send --account ZOHO_MAIL_ACCOUNT_ID --json '{"fromAddress":"a@x.com","toAddress":"b@x.com","subject":"Test","content":"Hello"}'
 ```
 
 ## Piping and composition
@@ -207,6 +218,11 @@ If you use the same portal or team repeatedly, set these env vars to skip the fl
 ```bash
 export ZOHO_PORTAL_ID=12345        # default for --portal (Projects commands)
 export ZOHO_TEAM_ID=abc123         # default for --team (WorkDrive commands)
+export ZOHO_INVOICE_ORG_ID=...    # default for --org (Invoice commands)
+export ZOHO_EXPENSE_ORG_ID=...    # default for --org (Expense commands)
+export ZOHO_INVENTORY_ORG_ID=...  # default for --org (Inventory commands)
+export ZOHO_MAIL_ORG_ID=...       # default for --org (Mail org-level APIs)
+export ZOHO_MAIL_ACCOUNT_ID=...  # default for --account (Mail account-level APIs)
 ```
 
 The flag always overrides the env var. If neither is set, the command fails with a clear error.
@@ -224,7 +240,7 @@ Zoho runs in 9 data centers. Set via `ZOHO_DC` env var or `--dc` flag on auth co
 | **CRM** | Supported | 29 |
 | **Projects** | Supported | 39 |
 | **WorkDrive** | Supported | 26 |
-| **Writer** | Supported | 7 |
+| **Writer** | Supported | 8 |
 | **Cliq** | Supported | 12 |
 | Desk | Planned | — |
 | Books | Planned | — |
@@ -233,13 +249,13 @@ Zoho runs in 9 data centers. Set via `ZOHO_DC` env var or `--dc` flag on auth co
 | Analytics | Planned | — |
 | Sign | Planned | — |
 | Campaigns | Planned | — |
-| Mail | Planned | — |
+| **Mail** | Supported | 172 |
 | Calendar | Planned | — |
-| Sheet | Planned | — |
+| **Sheet** | Supported | 97 |
 | Show | Planned | — |
-| Inventory | Planned | — |
-| Invoice | Planned | — |
-| Expense | Planned | — |
+| **Inventory** | Supported | 160 |
+| **Invoice** | Supported | 267 |
+| **Expense** | Supported | 80 |
 | Billing | Planned | — |
 | Forms | Planned | — |
 | SalesIQ | Planned | — |

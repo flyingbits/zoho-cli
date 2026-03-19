@@ -1,6 +1,6 @@
 ---
 name: zoho-cli
-description: Interact with Zoho REST APIs (CRM, Projects, WorkDrive, Writer, Cliq) via CLI. 118 commands for records, tasks, files, documents, and messaging. Use when the user needs to query, create, update, or manage data in any Zoho product, or when automating Zoho workflows.
+description: Interact with Zoho REST APIs (CRM, Projects, WorkDrive, Writer, Cliq, Expense, Invoice, Inventory, Mail, Sheet) via CLI. Use when the user needs to query, create, update, or manage Zoho data or automate Zoho workflows.
 license: GPL-3.0
 compatibility: Requires the zoho-cli binary (Go). Needs network access to Zoho APIs. Needs ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, and ZOHO_REFRESH_TOKEN env vars (or interactive auth).
 metadata:
@@ -10,7 +10,7 @@ metadata:
 
 # zoho-cli
 
-CLI for Zoho REST APIs. Single binary, JSON to stdout, 118 commands across CRM, Projects, WorkDrive, Writer, and Cliq.
+CLI for Zoho REST APIs. Single binary, JSON to stdout. Product modules include CRM, Projects, WorkDrive, Writer, Cliq, Expense, Invoice, Inventory, Mail, and Sheet (Books is work in progress).
 
 ## Install
 
@@ -105,6 +105,7 @@ Navigate top-down: teams -> folders -> files. Set `ZOHO_TEAM_ID` env var to avoi
 ### Writer
 
 ```bash
+zoho writer list --limit 10
 zoho writer details DOC_ID
 zoho writer fields DOC_ID
 zoho writer merge DOC_ID --json '{"name":"Alice"}' --format pdf --output ./out.pdf
@@ -112,7 +113,6 @@ zoho writer read DOC_ID
 zoho writer download DOC_ID --format pdf --output ./doc.pdf
 ```
 
-Writer has no "list documents" endpoint. Get doc IDs from WorkDrive.
 
 ### Cliq
 
@@ -123,11 +123,19 @@ zoho cliq buddies message user@company.com --text "hello"
 zoho cliq messages list CHAT_ID
 ```
 
+### Mail
+```bash
+zoho mail domains list --org ZOHO_MAIL_ORG_ID
+zoho mail folders list --account ZOHO_MAIL_ACCOUNT_ID
+zoho mail labels list --account ZOHO_MAIL_ACCOUNT_ID
+zoho mail messages send --account ZOHO_MAIL_ACCOUNT_ID --json '{"fromAddress":"a@x.com","toAddress":"b@x.com","subject":"Test","content":"Hello"}'
+```
+
 ## Coverage
 
-Supported now: **CRM** (29 commands), **Projects** (39), **WorkDrive** (26), **Writer** (7), **Cliq** (12).
+Supported now: **CRM** (29 commands), **Projects** (39), **WorkDrive** (26), **Writer** (8), **Cliq** (12), **Expense**, **Inventory**, **Invoice**, **Mail**, **Books (WIP)**.
 
-Not yet supported: Desk, Books, People, Recruit, Analytics, Sign, Campaigns, Mail, Calendar, Sheet, Show, Inventory, Invoice, Expense, Billing, Forms, SalesIQ, Bookings, Social, Survey, Meeting, Connect, Flow, Creator, Sprints, BugTracker, Bigin, Voice, Commerce, Backstage, Marketing Automation, FSM, Assist, Directory, Shifts, Contracts, Practice, Checkout, Lens, Learn, ZeptoMail, Notebook, TeamInbox, Office Integrator, ToDo, PDF Editor, IoT, DataPrep, Apptics, Vault, Catalyst, Webinar, PageSense, LandingPage, CommunitySpaces, Thrive, Sites, RouteIQ, Workerly, Solo, Procurement.
+Not yet supported: Desk, People, Recruit, Analytics, Sign, Campaigns, Calendar, Show, Billing, Forms, SalesIQ, Bookings, Social, Survey, Meeting, Connect, Flow, Creator, Sprints, BugTracker, Bigin, Voice, Commerce, Backstage, Marketing Automation, FSM, Assist, Directory, Shifts, Contracts, Practice, Checkout, Lens, Learn, ZeptoMail, Notebook, TeamInbox, Office Integrator, ToDo, PDF Editor, IoT, DataPrep, Apptics, Vault, Catalyst, Webinar, PageSense, LandingPage, CommunitySpaces, Thrive, Sites, RouteIQ, Workerly, Solo, Procurement.
 
 If the user asks about an unsupported product, tell them zoho-cli doesn't cover it yet and suggest they open an issue at https://github.com/omin8tor/zoho-cli/issues.
 

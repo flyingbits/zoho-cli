@@ -48,11 +48,12 @@ tk blocked             # Show blocked issues
 - `internal/crm/` - CRM subcommands (29 commands)
 - `internal/projects/` - Projects subcommands (39 commands)
 - `internal/drive/` - WorkDrive subcommands (26 commands)
-- `internal/writer/` - Writer subcommands (7 commands)
+- `internal/writer/` - Writer subcommands (8 commands)
 - `internal/cliq/` - Cliq subcommands (12 commands)
 - `internal/mail/` - Mail subcommands (Organization, Domains, Groups, Users, Policy, Accounts, Folders, Labels, Messages, Signatures, Threads, Tasks, Bookmarks, Notes, Logs)
 - `internal/inventory/` - Inventory subcommands (Organizations, Contacts, Contact Persons, Item Groups, Items, Composite Items, Item Adjustments, Transfer Orders, Sales Orders, Packages, Shipment Orders, Invoices, Retainer Invoices, Customer Payments, Sales Returns, Credit Notes, Purchase Orders, Purchase Receives, Bills, Vendor Credits, Locations, Price Lists, Users, Taxes, Currency, Reporting Tags)
 - `internal/invoice/` - Invoice subcommands (Organizations, Items, Price Lists, Contacts, Contact Persons, Estimates, Invoices, Recurring Invoices, Customer Payments, Retainer Invoices, Credit Notes, Expenses, Recurring Expenses, Projects, Tasks, Time Entries, Users, Taxes, Expense Categories, Currency, CRM Integration)
+- `internal/sheet/` - Sheet subcommands (97 commands across Workbooks, Worksheets, Tables, Records, Cells, Content, Format, Named Ranges, Merge, Premium, Utility)
 - `internal/books/` - Books subcommands (Zoho Books API v3)
 
 ### Reference implementations
