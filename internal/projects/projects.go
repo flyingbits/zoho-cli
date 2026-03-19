@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/omin8tor/zoho-cli/internal/auth"
+	"github.com/omin8tor/zoho-cli/internal/dc"
 	zohttp "github.com/omin8tor/zoho-cli/internal/http"
 	"github.com/omin8tor/zoho-cli/internal/output"
 	"github.com/omin8tor/zoho-cli/internal/pagination"
@@ -356,7 +357,8 @@ func tasksCmd() *cli.Command {
 					if err != nil {
 						return err
 					}
-					url := c.ProjectsBase + "/portal/" + portal + "/tasks"
+					legacyBase := dc.ProjectsURL(c.Config.DC) + "/restapi"
+					url := legacyBase + "/portal/" + portal + "/mytasks/"
 					params := map[string]string{}
 					if s := cmd.String("status"); s != "" {
 						params["status"] = s
