@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"testing"
 
-	zohttp "github.com/omin8tor/zoho-cli/internal/http"
+	zohttp "github.com/flyingbits/zoho-cli/internal/http"
 )
 
 func testClient(url string) *zohttp.Client {

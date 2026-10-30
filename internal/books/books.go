@@ -1,7 +1,7 @@
 package books
 
 import (
-	"github.com/omin8tor/zoho-cli/internal"
+	"github.com/flyingbits/zoho-cli/internal"
 	"github.com/urfave/cli/v3"
 )
 

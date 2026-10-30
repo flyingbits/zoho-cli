@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/omin8tor/zoho-cli/internal"
-	"github.com/omin8tor/zoho-cli/internal/output"
+	"github.com/flyingbits/zoho-cli/internal"
+	"github.com/flyingbits/zoho-cli/internal/output"
 	"github.com/urfave/cli/v3"
 )
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	zohttp "github.com/omin8tor/zoho-cli/internal/http"
-	"github.com/omin8tor/zoho-cli/internal/output"
-	"github.com/omin8tor/zoho-cli/internal/pagination"
+	zohttp "github.com/flyingbits/zoho-cli/internal/http"
+	"github.com/flyingbits/zoho-cli/internal/output"
+	"github.com/flyingbits/zoho-cli/internal/pagination"
 	"github.com/urfave/cli/v3"
 )
 

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/omin8tor/zoho-cli/internal"
-	zohttp "github.com/omin8tor/zoho-cli/internal/http"
-	"github.com/omin8tor/zoho-cli/internal/output"
-	"github.com/omin8tor/zoho-cli/internal/pagination"
+	"github.com/flyingbits/zoho-cli/internal"
+	zohttp "github.com/flyingbits/zoho-cli/internal/http"
+	"github.com/flyingbits/zoho-cli/internal/output"
+	"github.com/flyingbits/zoho-cli/internal/pagination"
 	"github.com/urfave/cli/v3"
 )
 

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/omin8tor/zoho-cli/internal"
-	"github.com/omin8tor/zoho-cli/internal/auth"
-	"github.com/omin8tor/zoho-cli/internal/dc"
+	"github.com/flyingbits/zoho-cli/internal"
+	"github.com/flyingbits/zoho-cli/internal/auth"
+	"github.com/flyingbits/zoho-cli/internal/dc"
 )
 
 type Client struct {

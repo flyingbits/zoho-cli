@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/omin8tor/zoho-cli/internal"
-	zohodc "github.com/omin8tor/zoho-cli/internal/dc"
+	"github.com/flyingbits/zoho-cli/internal"
+	zohodc "github.com/flyingbits/zoho-cli/internal/dc"
 )
 
 type AuthConfig struct {

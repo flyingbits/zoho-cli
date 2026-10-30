@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	zohttp "github.com/omin8tor/zoho-cli/internal/http"
+	zohttp "github.com/flyingbits/zoho-cli/internal/http"
 )
 
 type PageState struct {
